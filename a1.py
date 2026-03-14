@@ -220,12 +220,10 @@ def Pass_Word():
     if len(First_Name) > 5 and len(Surname) > 5:
         result = First_Name[0:2] + Surname[:: -1][:1] + str(age % 10)
     else:
-        result = First_Name[:1] + int(age) + Surname[:: -1][:1]
+        result = First_Name[:1] + str(age) + Surname[:: -1][:1]
     print(result)
 
 
-while True:
-    Pass_Word()
 
 # การตรวจสอบบัตรนักศึกษา A1-016
 def Student_ID():
@@ -297,25 +295,83 @@ def up_douw():
 
 
 
-def is_leap_year(year):
-    # เงื่อนไข: หารด้วย 4 ลงตัว
-    if year % 4 == 0:
-        # ข้อยกเว้น: ถ้าหารด้วย 100 ลงตัว จะไม่เป็นปีอธิกสุรทิน
-        if year % 100 == 0:
-            # ข้อยกเว้นของข้อยกเว้น: ถ้าหารด้วย 400 ลงตัว จะกลับมาเป็นปีอธิกสุรทิน
-            if year % 400 == 0:
-                return "yes"
-            else:
-                return "no"
-        else:
-            return "yes"
-    else:
-        return "no"
+def Leap_year():
+    year = int(input("Enter Year : "))
+    result = "None"
 
-# รับค่าปี ค.ศ. จากผู้ใช้
-try:
-    input_year = int(input("กรุณาใส่ปี ค.ศ.: "))
-    result = is_leap_year(input_year)
+    if year < 1582:
+        if (year % 4) == 0:
+            result = "yes"
+        else:
+            result = "no"
+    else:
+        if (year % 400) == 0:
+            result = "yes"
+        elif (year % 100) == 0:
+            result = "no"
+        elif (year % 4) == 0:
+            result = "yes"
+        else:
+            "no"
     print(result)
-except ValueError:
-    print("กรุณากรอกข้อมูลเป็นตัวเลขเท่านั้น")
+
+
+
+def Zodiac():
+    day = int(input("Enter Day :"))
+    month = int(input("Enter Month : "))
+    zodiac = ["capricorn", "aquarius", "pisces",
+            "aries", "taurus", "gemini",
+            "cancer", "leo", "virgo",
+            "libra", "scorpio", "sagittarius"]
+    result = "None"
+
+    if ((month == 1) and (day >= 20)) or ((month == 2) and (day <= 18)):
+        result = zodiac[1] #aquarius
+    elif ((month == 2) and (day >= 19)) or ((month == 3) and (day <= 20)):
+        result = zodiac[2] #pisces
+    elif ((month == 3) and (day >= 21)) or ((month == 4) and (day <= 19)):
+        result = zodiac[3] #aries
+    elif ((month == 4) and (day >= 20)) or ((month == 5) and (day <= 20)):
+        result = zodiac[4] #taurus
+    elif ((month == 5) and (day >= 21)) or ((month == 6) and (day <= 21)):
+        result = zodiac[5] #gemini
+    elif ((month == 6) and (day >= 22)) or ((month == 7) and (day <= 22)):
+        result = zodiac[6] #cancer
+    elif ((month == 7) and (day >= 23)) or ((month == 8) and (day <= 22)):
+        result = zodiac[7] #leo
+    elif ((month == 8) and (day >= 23)) or ((month == 9) and (day <= 22)):
+        result = zodiac[8] #virgo
+    elif ((month == 9) and (day >= 23)) or ((month == 10) and (day <= 23)):
+        result = zodiac[9] #libra
+    elif ((month == 10) and (day >= 24)) or ((month == 11) and (day <= 21)):
+        result = zodiac[10] #scorpio
+    elif ((month == 11) and (day >= 22)) or ((month == 12) and (day <= 21)):
+        result = zodiac[11] #sagittarius
+    else:
+        result = zodiac[0] #capricorn
+
+    print(result)
+    
+def Zodiac_V2():
+    day = int(input())
+    month = int(input())
+    
+    # เก็บข้อมูลเป็น (เดือน, วันที่ตัดรอบ, ชื่อราศี)
+    thresholds = [
+        (1, 19, "capricorn"), (2, 18, "aquarius"), (3, 20, "pisces"),
+        (4, 19, "aries"), (5, 20, "taurus"), (6, 21, "gemini"),
+        (7, 22, "cancer"), (8, 22, "leo"), (9, 22, "virgo"),
+        (10, 23, "libra"), (11, 21, "scorpio"), (12, 21, "sagittarius")
+    ]
+    
+    # ถ้าวันที่เกิน "วันที่ตัดรอบ" ของเดือนนั้น ให้ขยับไปราศีถัดไป
+    # มกราคม (1) ถ้า > 19 จะกลายเป็นราศีลำดับถัดไป (aquarius)
+    index = month - 1
+    if day > thresholds[index][1]:
+        index = (index + 1) % 12
+        
+    print(thresholds[index][2])
+
+
+
