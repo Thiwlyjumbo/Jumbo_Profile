@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Werewolf Auto Game</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #dbeafe; /* Blue 100 */
+            overflow-y: auto; /* Allow body scroll for better mobile experience */
+            min-height: 100vh;
+        }
+
+        /* --- Global Scrollbar Styling (Glassmorphism Style) --- */
+        ::-webkit-scrollbar {
+            width: 14px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            border: 4px solid transparent;
+            background-clip: content-box;
+            transition: background-color 0.3s;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+
+        /* --- Animations --- */
+        @keyframes moveSun {
+            0% { transform: translateX(-50px) translateY(50px); opacity: 0; }
+            20% { opacity: 1; }
+            50% { transform: translateX(50vw) translateY(-20px); opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateX(calc(100vw + 50px)) translateY(50px); opacity: 0; }
+        }
+        @keyframes moveMoon {
+            0% { transform: translateX(-20px) translateY(20px) scale(0.8); opacity: 0; }
+            20% { opacity: 1; }
+            100% { transform: translateX(90vw) translateY(-40px) scale(1); opacity: 1; }
+        }
+        @keyframes flipUp {
+            0% { transform: perspective(1000px) rotateX(90deg) translateY(20px); opacity: 0; }
+            100% { transform: perspective(1000px) rotateX(0deg) translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes bounceSlow {
+            0%, 100% { transform: translateY(-3%); }
+            50% { transform: translateY(3%); }
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.1); }
+            50% { box-shadow: 0 0 25px rgba(255, 255, 255, 0.3); }
+        }
+
+        /* Credits Scrolling Animation */
+        @keyframes creditsMove {
+            0% { transform: translateY(100%); }
+            100% { transform: translateY(-150%); }
+        }
+
+        .animate-sun-move { animation: moveSun 25s linear infinite; }
+        .animate-moon-move { animation: moveMoon 30s linear infinite; }
+        .animate-flip-up { animation: flipUp 1s cubic-bezier(0.2, 0.8, 0.2, 1); } 
+        .animate-fade-in { animation: fadeIn 1.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .animate-bounce-slow { animation: bounceSlow 4s infinite ease-in-out; }
+        .animate-float { animation: float 6s infinite ease-in-out; }
+        .animate-pulse-glow { animation: pulseGlow 3s infinite; }
+        
+        /* Auto Scrolling Credits Class */
+        .animate-credits {
+            animation: creditsMove 20s linear infinite;
+        }
+        .animate-credits:hover {
+            animation-play-state: paused;
+        }
+
+        /* Liquid Glass Panel Effect */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.4);
+            border-left: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+            transform: skewX(-25deg);
+            pointer-events: none;
+            animation: shine 8s infinite;
+        }
+
+        @keyframes shine {
+            0% { left: -100%; opacity: 0; }
+            10% { opacity: 1; }
+            20% { left: 200%; opacity: 0; }
+            100% { left: 200%; opacity: 0; }
+        }
+
+        /* Inner Content Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+            background: rgba(255,255,255,0.15); 
+            border-radius: 10px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+        /* Scroll Mask Fade Effect */
+        .mask-fade-y {
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+        }
+        
+        button, input {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Audio Elements -->
+    <audio id="sound-werewolf" src="https://assets.mixkit.co/active_storage/sfx/1487/1487-preview.mp3"></audio>
+    <audio id="sound-villager" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3"></audio>
+    <audio id="sound-madman" src="https://assets.mixkit.co/active_storage/sfx/437/437-preview.mp3"></audio>
+
+    <div id="app" class="min-h-screen relative flex flex-col items-center p-6 py-12 transition-colors duration-1000">
+        <!-- Content will be injected here by JavaScript -->
+    </div>
+
+    <script>
+        // --- GAME CONSTANTS ---
+        const ROLES = {
+            WEREWOLF: { id: 'werewolf', label: 'มนุษย์หมาป่า', icon: 'fa-moon', color: 'text-red-500', bg: 'bg-red-900/30', border: 'border-red-500/50', actionVerb: 'เลือกเหยื่อสังหาร' },
+            VILLAGER: { id: 'villager', label: 'ชาวบ้าน', icon: 'fa-users', color: 'text-blue-400', bg: 'bg-blue-900/30', border: 'border-blue-500/50', actionVerb: 'หลับอย่างสงบ' },
+            SEER: { id: 'seer', label: 'ผู้หยั่งรู้', icon: 'fa-eye', color: 'text-purple-400', bg: 'bg-purple-900/30', border: 'border-purple-500/50', actionVerb: 'เลือกตรวจดูบทบาท' },
+            GUARD: { id: 'guard', label: 'ผู้พิทักษ์', icon: 'fa-shield-halved', color: 'text-green-400', bg: 'bg-green-900/30', border: 'border-green-500/50', actionVerb: 'เลือกคนที่ต้องการปกป้อง' },
+            MADMAN: { id: 'madman', label: 'คนบ้า', icon: 'fa-ghost', color: 'text-pink-400', bg: 'bg-pink-900/30', border: 'border-pink-500/50', actionVerb: 'แกล้งทำตัวให้น่าสงสัย' },
+        };
+
+        // --- GAME STATE ---
+        let state = {
+            phase: 'SETUP', // SETUP, REVEAL, NIGHT_ACTION, DAY_RESULTS, VOTE_PASS, VOTE_ACTION, VOTE_RESULT, GAME_OVER
+            players: [],
+            inputValue: '',
+            settings: {
+                werewolves: 1,
+                seer: 1,
+                guard: 1,
+                madman: 0,
+                firstNightKill: true
+            },
+            dayCount: 0,
+            nightActions: { guardTarget: null, werewolfTarget: null, seerTarget: null, seerResult: null },
+            tempSelection: null,
+            nightOrder: [],
+            currentNightPlayerIndex: 0,
+            voteOrder: [],
+            currentVoterIndex: 0,
+            votes: {},
+            voteResult: null,
+            nightResult: null,
+            winner: null,
+            currentRevealIndex: 0,
+            isCardFlipped: false,
+            isPassingPhone: false
+        };
+
+        // --- HELPER FUNCTIONS ---
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function getAlivePlayers() {
+            return state.players.filter(p => p.isAlive);
+        }
+
+        function getVillagerCount() {
+            const totalSpecial = state.settings.werewolves + state.settings.seer + state.settings.guard + state.settings.madman;
+            return Math.max(0, state.players.length - totalSpecial);
+        }
+
+        function playWinSound(winnerType) {
+            document.querySelectorAll('audio').forEach(el => {
+                el.pause();
+                el.currentTime = 0;
+            });
+
+            let audioId = '';
+            if (winnerType === 'WEREWOLF') audioId = 'sound-werewolf';
+            else if (winnerType === 'VILLAGER') audioId = 'sound-villager';
+            else if (winnerType === 'MADMAN') audioId = 'sound-madman';
+
+            if (audioId) {
+                const audio = document.getElementById(audioId);
+                if (audio) {
+                    audio.volume = 0.5;
+                    audio.play().catch(e => console.log("Audio play failed (user interaction required first):", e));
+                }
+            }
+        }
+
+        // --- LOGIC FUNCTIONS ---
+        function addPlayer() {
+            const name = state.inputValue.trim();
+            if (name) {
+                state.players.push({ id: Date.now(), name: name, role: null, isAlive: true });
+                state.inputValue = '';
+                render();
+            }
+        }
+
+        function removePlayer(id) {
+            state.players = state.players.filter(p => p.id !== id);
+            render();
+        }
+
+        function updateSetting(key, change) {
+            const newVal = state.settings[key] + change;
+            if (newVal >= 0) { 
+                if (key === 'werewolves' && newVal < 1) return; 
+                state.settings[key] = newVal;
+                render();
+            }
+        }
+
+        function startGameSetup() {
+            const totalSpecial = state.settings.werewolves + state.settings.seer + state.settings.guard + state.settings.madman;
+            const availableForVillagers = state.players.length - totalSpecial;
+
+            if (availableForVillagers < 1) {
+                alert(`จำนวนบทบาทพิเศษเยอะเกินไป! ต้องเหลือที่ว่างให้ "ชาวบ้าน" อย่างน้อย 1 คน (ตอนนี้เหลือ ${availableForVillagers})`);
+                return;
+            }
+
+            let rolePool = [];
+            for (let i = 0; i < state.settings.werewolves; i++) rolePool.push(ROLES.WEREWOLF);
+            for (let i = 0; i < state.settings.seer; i++) rolePool.push(ROLES.SEER);
+            for (let i = 0; i < state.settings.guard; i++) rolePool.push(ROLES.GUARD);
+            for (let i = 0; i < state.settings.madman; i++) rolePool.push(ROLES.MADMAN);
+            while (rolePool.length < state.players.length) rolePool.push(ROLES.VILLAGER);
+
+            const shuffledRoles = shuffleArray(rolePool);
+            state.players = state.players.map((player, index) => ({ ...player, role: shuffledRoles[index] }));
+
+            state.phase = 'REVEAL';
+            state.currentRevealIndex = 0;
+            state.isCardFlipped = false;
+            state.dayCount = 0;
+            state.winner = null;
+            render();
+        }
+
+        function nextReveal() {
+            if (state.currentRevealIndex < state.players.length - 1) {
+                state.currentRevealIndex++;
+                state.isCardFlipped = false;
+            } else {
+                startNightPhase(1);
+            }
+            render();
+        }
+
+        function startNightPhase(dayOverride = null) {
+            state.dayCount = dayOverride !== null ? dayOverride : state.dayCount + 1;
+            state.nightActions = { guardTarget: null, werewolfTarget: null, seerTarget: null, seerResult: null };
+            state.nightOrder = getAlivePlayers();
+            state.currentNightPlayerIndex = 0;
+            state.isPassingPhone = true;
+            state.tempSelection = null;
+            state.phase = 'NIGHT_ACTION';
+            render();
+        }
+
+        function confirmNightAction() {
+            const currentPlayer = state.nightOrder[state.currentNightPlayerIndex];
+            const roleId = currentPlayer.role.id;
+            const targetId = state.tempSelection;
+
+            if (roleId === 'guard') state.nightActions.guardTarget = targetId;
+            else if (roleId === 'werewolf') {
+                if (targetId !== null || !state.nightActions.werewolfTarget) state.nightActions.werewolfTarget = targetId;
+            } 
+            else if (roleId === 'seer' && targetId) {
+                state.nightActions.seerTarget = targetId;
+                const target = state.players.find(p => p.id === targetId);
+                state.nightActions.seerResult = target.role.label;
+            }
+
+            state.tempSelection = null;
+
+            if (roleId === 'seer' && targetId) {
+                render();
+                return; 
+            }
+
+            completeNightTurn();
+        }
+
+        function completeNightTurn() {
+            if (state.currentNightPlayerIndex < state.nightOrder.length - 1) {
+                state.currentNightPlayerIndex++;
+                state.isPassingPhone = true;
+                state.tempSelection = null;
+                render();
+            } else {
+                calculateNightResults();
+            }
+        }
+
+        function calculateNightResults() {
+            let deadPlayerId = null;
+            let message = "รุ่งเช้ามาถึง... ";
+            
+            const wwTarget = state.nightActions.werewolfTarget;
+            const guardTarget = state.nightActions.guardTarget;
+            const isKillNight = (state.dayCount > 1 || state.settings.firstNightKill);
+
+            if (wwTarget && isKillNight) {
+                if (wwTarget === guardTarget) {
+                    message += "เมื่อคืนมีการโจมตี แต่ผู้พิทักษ์ป้องกันไว้ได้!";
+                } else {
+                    deadPlayerId = wwTarget;
+                    const deadName = state.players.find(p => p.id === deadPlayerId)?.name;
+                    message += `น่าเศร้าที่ ${deadName} เสียชีวิตเมื่อคืนนี้`;
+                }
+            } else {
+                message += "เมื่อคืนนี้เงียบสงบ ไม่มีใครเสียชีวิต";
+            }
+
+            if (deadPlayerId) {
+                state.players = state.players.map(p => p.id === deadPlayerId ? { ...p, isAlive: false } : p);
+            }
+
+            state.nightResult = { deadPlayerId, message };
+            state.phase = 'DAY_RESULTS';
+            
+            checkWinCondition();
+            render();
+        }
+
+        function startSecretVoting() {
+            state.voteOrder = getAlivePlayers();
+            state.currentVoterIndex = 0;
+            state.votes = {};
+            state.voteResult = null;
+            state.tempSelection = null;
+            state.isPassingPhone = true;
+            state.phase = 'VOTE_PASS';
+            render();
+        }
+
+        function confirmVote() {
+            const currentVoter = state.voteOrder[state.currentVoterIndex];
+            const targetId = state.tempSelection;
+            
+            state.votes[currentVoter.id] = targetId;
+            state.tempSelection = null;
+
+            if (state.currentVoterIndex < state.voteOrder.length - 1) {
+                state.currentVoterIndex++;
+                state.isPassingPhone = true;
+                state.phase = 'VOTE_PASS';
+                render();
+            } else {
+                calculateVoteResults();
+            }
+        }
+
+        function calculateVoteResults() {
+            const counts = {};
+            Object.values(state.votes).forEach(tId => {
+                if(tId) counts[tId] = (counts[tId] || 0) + 1;
+            });
+
+            let maxVotes = 0;
+            let kickedId = null;
+            let tie = false;
+
+            for (const [id, count] of Object.entries(counts)) {
+                if (count > maxVotes) {
+                    maxVotes = count;
+                    kickedId = id;
+                    tie = false;
+                } else if (count === maxVotes && maxVotes > 0) {
+                    tie = true;
+                }
+            }
+
+            let message = "";
+            
+            if (tie || maxVotes === 0 || !kickedId) {
+                message = "ผลโหวตเสมอ หรือไม่มีใครโหวต วันนี้ไม่มีใครถูกประหาร";
+                state.players = [...state.players];
+            } else {
+                const kickedPlayer = state.players.find(p => p.id == kickedId);
+                message = `ผลโหวตสรุปว่า ${kickedPlayer.name} ถูกประหารชีวิต! (${maxVotes} เสียง)`;
+                
+                if (kickedPlayer.role.id === 'madman') {
+                    state.players = state.players.map(p => p.id == kickedId ? { ...p, isAlive: false } : p);
+                    state.voteResult = `คนบ้า (${kickedPlayer.name}) ถูกประหารชีวิต! เขาบรรลุเป้าหมายและชนะเกมนี้!`;
+                    state.winner = 'MADMAN';
+                    state.phase = 'GAME_OVER';
+                    playWinSound('MADMAN');
+                    render();
+                    return;
+                }
+
+                state.players = state.players.map(p => p.id == kickedId ? { ...p, isAlive: false } : p);
+            }
+
+            state.voteResult = message;
+            state.phase = 'VOTE_RESULT';
+            checkWinCondition();
+            render();
+        }
+
+        function checkWinCondition() {
+            const aliveWW = state.players.filter(p => p.isAlive && p.role.id === 'werewolf').length;
+            const aliveVillagers = state.players.filter(p => p.isAlive && p.role.id !== 'werewolf').length;
+
+            if (aliveWW === 0) {
+                state.winner = 'VILLAGER';
+                state.phase = 'GAME_OVER';
+                playWinSound('VILLAGER');
+            } else if (aliveWW >= aliveVillagers) {
+                state.winner = 'WEREWOLF';
+                state.phase = 'GAME_OVER';
+                playWinSound('WEREWOLF');
+            }
+        }
+
+        function resetGame() {
+            state.phase = 'SETUP';
+            state.players = [];
+            state.dayCount = 0;
+            state.winner = null;
+            state.nightActions = {};
+            state.votes = {};
+            render();
+        }
+
+        // --- RENDER FUNCTIONS ---
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = ''; 
+
+            // Background Logic
+            let bgClass = "bg-sky-100 text-slate-900";
+            let bgGradient = "bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-sky-200 via-sky-100 to-white";
+            let showSun = true;
+
+            if (['SETUP', 'REVEAL', 'NIGHT_ACTION'].includes(state.phase) || state.winner === 'WEREWOLF' || state.winner === 'MADMAN') {
+                bgClass = "bg-slate-950 text-blue-100";
+                bgGradient = "bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black";
+                showSun = false;
+                if (state.winner === 'WEREWOLF') bgClass = "bg-red-950 text-red-100";
+                if (state.winner === 'MADMAN') bgClass = "bg-pink-950 text-pink-100";
+            }
+
+            // Mobile-centric container alignment
+            app.className = `min-h-screen relative flex flex-col justify-center items-center p-6 py-12 w-full transition-colors duration-1000 ${bgClass}`;
+            
+            // Background Elements
+            app.innerHTML += `<div class="absolute inset-0 pointer-events-none ${bgGradient} z-0 transition-opacity duration-1000"></div>`;
+            if (showSun) {
+                app.innerHTML += `<div class="absolute top-10 -left-20 opacity-80 animate-sun-move pointer-events-none z-0"><i class="fa-solid fa-sun text-yellow-400 text-9xl drop-shadow-lg animate-pulse-glow"></i></div>`;
+            } else {
+                app.innerHTML += `<div class="absolute top-10 left-5 opacity-50 animate-moon-move pointer-events-none z-0"><i class="fa-solid fa-moon text-slate-300 text-6xl drop-shadow-lg animate-float"></i></div>`;
+            }
+
+            // Particle Effects
+            if (!showSun) {
+                app.innerHTML += `
+                    <div class="absolute top-1/4 left-1/4 w-1 h-1 bg-white rounded-full animate-pulse opacity-50 delay-700"></div>
+                    <div class="absolute top-3/4 right-1/4 w-1.5 h-1.5 bg-white rounded-full animate-pulse opacity-30 delay-200"></div>
+                    <div class="absolute top-1/2 left-3/4 w-1 h-1 bg-white rounded-full animate-pulse opacity-60 delay-500"></div>
+                `;
+            }
+
+            // Main Content Container
+            const container = document.createElement('div');
+            container.className = "relative z-10 w-full max-w-md lg:max-w-6xl flex flex-col transition-all duration-700 ease-in-out mb-10"; 
+            app.appendChild(container);
+
+            // --- PHASE RENDERING ---
+
+            if (state.phase === 'SETUP') {
+                const canStart = state.players.length >= 4;
+                const villagerCount = getVillagerCount();
+                
+                let html = `
+                    <h1 class="text-4xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 flex items-center gap-3 drop-shadow-lg animate-fade-in leading-relaxed justify-center animate-float lg:col-span-2">
+                        <i class="fa-solid fa-moon text-purple-300"></i> Werewolf Auto
+                    </h1>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start mb-6">
+                `;
+
+                // --- Panel 1: Add Players ---
+                html += `
+                    <div class="glass-panel p-6 rounded-2xl animate-flip-up backdrop-blur-xl ${state.players.length === 0 ? 'lg:col-span-2 lg:max-w-md lg:mx-auto w-full' : ''}">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2 text-blue-300 leading-relaxed"><i class="fa-solid fa-users"></i> 1. ลงทะเบียนผู้เล่น (${state.players.length} คน)</h2>
+                        <form onsubmit="event.preventDefault(); addPlayer();" class="flex gap-2 mb-4">
+                            <input type="text" id="pName" placeholder="ชื่อผู้เล่น..." class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-400 transition-all duration-500 hover:bg-white/20" value="${state.inputValue}" oninput="state.inputValue = this.value">
+                            <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-transform active:scale-95 duration-500">เพิ่ม</button>
+                        </form>
+                        <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1 mask-fade-y custom-scrollbar">
+                            ${state.players.length === 0 ? '<span class="text-slate-500 italic pl-2">ยังไม่มีรายชื่อ...</span>' : ''}
+                            ${state.players.map(p => `
+                                <span class="bg-slate-800/60 border border-slate-600/50 px-3 py-1.5 rounded-full text-sm flex items-center gap-2 animate-fade-in hover:bg-slate-700/60 transition-colors">
+                                    <span class="w-2 h-2 rounded-full bg-blue-400"></span> ${p.name}
+                                    <button onclick="removePlayer(${p.id})" class="text-red-400 hover:text-red-300 ml-1 font-bold">×</button>
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+
+                // --- Panel 2: Settings (Only if players > 0) ---
+                if (state.players.length > 0) {
+                    html += `
+                    <div class="glass-panel p-6 rounded-2xl animate-fade-in backdrop-blur-xl" style="animation-delay: 0.2s">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2 text-blue-300 leading-relaxed">⚙️ 2. ตั้งค่าเกม</h2>
+                        <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+                            <!-- Roles Controls -->
+                            ${Object.entries({werewolves: 'หมาป่า', seer: 'ผู้หยั่งรู้', guard: 'ผู้พิทักษ์', madman: 'คนบ้า'}).map(([key, label]) => {
+                                const icons = {werewolves: 'fa-moon', seer: 'fa-eye', guard: 'fa-shield-halved', madman: 'fa-ghost'};
+                                const colors = {werewolves: 'text-red-300', seer: 'text-purple-300', guard: 'text-green-300', madman: 'text-pink-300'};
+                                return `
+                                <div class="flex flex-col items-center bg-white/5 p-2 rounded-lg border border-white/10 hover:border-white/30 transition-colors duration-500 hover:bg-white/10">
+                                    <span class="${colors[key]} mb-1"><i class="fa-solid ${icons[key]}"></i> ${label}</span>
+                                    <div class="flex items-center gap-3">
+                                        <button onclick="updateSetting('${key}', -1)" class="w-8 h-8 bg-white/10 rounded-full hover:bg-white/20 transition-colors duration-300 border border-white/5">-</button>
+                                        <span class="w-4 text-center font-bold text-lg">${state.settings[key]}</span>
+                                        <button onclick="updateSetting('${key}', 1)" class="w-8 h-8 bg-white/10 rounded-full hover:bg-white/20 transition-colors duration-300 border border-white/5">+</button>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                        
+                        <label class="flex items-center justify-between p-3 rounded-xl bg-white/5 cursor-pointer border border-white/10 hover:bg-white/10 mb-2 transition-colors duration-500">
+                            <span class="flex items-center gap-2 text-red-300 font-medium text-sm">
+                                <i class="fa-solid fa-skull"></i> เริ่มฆ่าคืนแรก
+                            </span>
+                            <input type="checkbox" ${state.settings.firstNightKill ? 'checked' : ''} onchange="state.settings.firstNightKill = this.checked; render()" class="w-5 h-5 rounded accent-purple-500 cursor-pointer">
+                        </label>
+
+                        <p class="text-xs text-center ${villagerCount < 1 ? 'text-red-400 font-bold animate-pulse' : 'text-slate-400'} transition-colors duration-500">
+                            *ที่เหลือจะเป็นชาวบ้าน (${villagerCount} คน) ${villagerCount < 1 ? "(ต้องมีอย่างน้อย 1!)" : ""}
+                        </p>
+                    </div>
+                    `;
+                }
+                
+                html += `</div>`; // End Grid Container
+
+                // Start Button
+                html += `
+                    <div class="w-full flex justify-center pb-8">
+                        <button onclick="startGameSetup()" ${!canStart ? 'disabled' : ''} class="w-full max-w-md font-bold py-4 rounded-2xl text-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 relative z-20 duration-500 border border-white/10 ${canStart ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-green-900/30 animate-bounce-slow' : 'bg-slate-800/50 text-slate-500 cursor-not-allowed opacity-70'}">
+                            ${canStart ? '<i class="fa-solid fa-play"></i> เริ่มเกม' : `ขาดอีก ${Math.max(0, 4 - state.players.length)} คน`}
+                        </button>
+                    </div>
+                `;
+                container.innerHTML = html;
+            }
+
+            else if (state.phase === 'REVEAL') {
+                const p = state.players[state.currentRevealIndex];
+                let html = `
+                    <div class="mb-8 flex justify-center gap-2">
+                        ${state.players.map((_, i) => `<div class="h-2 rounded-full transition-all duration-1000 ${i === state.currentRevealIndex ? 'w-8 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'w-2 bg-slate-700'}"></div>`).join('')}
+                    </div>
+                `;
+
+                if (!state.isCardFlipped) {
+                    html += `
+                        <div class="glass-panel p-10 rounded-3xl animate-fade-in text-center shadow-2xl backdrop-blur-xl">
+                            <div class="w-32 h-32 bg-slate-800/50 rounded-full mx-auto mb-8 flex items-center justify-center text-6xl shadow-inner border border-slate-600/50 animate-float text-slate-300">📱</div>
+                            <h2 class="text-xl font-medium text-slate-400 mb-4 tracking-widest uppercase">ขั้นตอน: แจกบทบาท</h2>
+                            <div class="text-3xl font-bold mb-6">ส่งมือถือให้...</div>
+                            <div class="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-blue-300 to-purple-300 mb-10 break-words tracking-tight drop-shadow-lg animate-pulse-glow">
+                                "${p.name}"
+                            </div>
+                            <button onclick="state.isCardFlipped = true; render()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 rounded-2xl text-xl shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95 duration-500 border border-blue-400/30">
+                                <i class="fa-solid fa-eye"></i> เปิดดู
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="glass-panel p-10 rounded-3xl animate-flip-up relative overflow-hidden ${p.role.bg} ${p.role.color} ${p.role.border} border-2 text-center shadow-2xl backdrop-blur-xl">
+                            <div class="mb-6 flex flex-col items-center">
+                                <div class="w-32 h-32 flex items-center justify-center mb-6">
+                                    <i class="fa-solid ${p.role.icon} text-9xl animate-bounce-slow drop-shadow-xl filter brightness-110"></i>
+                                </div>
+                                <h2 class="text-2xl font-semibold opacity-80 mb-2">บทบาทของคุณคือ</h2>
+                                <div class="text-5xl font-extrabold uppercase tracking-wider my-4 drop-shadow-2xl leading-relaxed scale-110">${p.role.label}</div>
+                            </div>
+                            <div class="text-white/90 text-base mb-8 bg-black/30 p-5 rounded-2xl backdrop-blur-md border border-white/5 shadow-inner leading-relaxed">
+                                จำบทบาทของคุณให้ดี ห้ามให้คนอื่นเห็น!
+                                ${p.role.id === 'madman' ? '<br/><br/><span class="text-pink-300 font-bold text-lg animate-pulse">*เป้าหมาย: ทำให้ตัวเองถูกโหวตตาย!</span>' : ''}
+                            </div>
+                            <button onclick="nextReveal()" class="w-full bg-slate-900/80 hover:bg-black text-white font-bold py-5 rounded-2xl text-lg shadow-xl flex items-center justify-center gap-3 border border-slate-600/50 transition-all active:scale-95 duration-500">
+                                ${state.currentRevealIndex < state.players.length - 1 ? 'เข้าใจแล้ว ส่งต่อ <i class="fa-solid fa-arrow-right"></i>' : 'เริ่มคืนแรก <i class="fa-solid fa-moon"></i>'}
+                            </button>
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+            }
+
+            else if (state.phase === 'NIGHT_ACTION') {
+                const current = state.nightOrder[state.currentNightPlayerIndex];
+                const role = current.role;
+                
+                if (state.nightActions.seerResult && role.id === 'seer') {
+                    container.innerHTML = `
+                        <div class="glass-panel bg-purple-900/20 p-10 rounded-3xl text-center border-purple-500/50 animate-flip-up shadow-2xl backdrop-blur-xl">
+                            <i class="fa-solid fa-eye text-7xl text-purple-400 mx-auto mb-6 animate-pulse"></i>
+                            <h2 class="text-2xl font-bold mb-4 text-purple-300">ผลการหยั่งรู้</h2>
+                            <p class="text-xl mb-6 text-slate-300">คุณส่องดู <span class="font-bold text-white text-2xl">"${state.players.find(p => p.id === state.nightActions.seerTarget).name}"</span></p>
+                            <div class="text-5xl font-extrabold p-8 rounded-2xl mb-8 bg-slate-800/80 text-white border border-slate-600 shadow-inner">
+                                เป็น <br/><span class="${state.players.find(p => p.id === state.nightActions.seerTarget).role.color}">${state.nightActions.seerResult}</span>
+                            </div>
+                            <button onclick="state.nightActions.seerResult = null; completeNightTurn()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-5 rounded-2xl text-xl transition-transform active:scale-95 duration-500">
+                                รับทราบ (ส่งมือถือคืน)
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (state.isPassingPhone) {
+                    container.innerHTML = `
+                        <div class="glass-panel p-10 rounded-3xl text-center animate-fade-in shadow-2xl backdrop-blur-xl">
+                            <h1 class="text-3xl font-bold mb-8 text-slate-300 flex justify-center items-center gap-3"><i class="fa-solid fa-moon"></i> คืนที่ ${state.dayCount}</h1>
+                            <div class="w-32 h-32 bg-slate-800/60 rounded-full mx-auto mb-8 flex items-center justify-center text-5xl shadow-inner border border-slate-600/50 animate-float text-slate-400">📱</div>
+                            <p class="text-slate-400 mb-6 text-xl">ส่งมือถือให้...</p>
+                            <div class="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300 mb-10 break-words tracking-tight drop-shadow-lg">
+                                "${current.name}"
+                            </div>
+                            <button onclick="state.isPassingPhone = false; render()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-5 rounded-2xl text-xl shadow-lg border border-slate-600 transition-transform active:scale-95 duration-500">
+                                ฉันคือ ${current.name} (ตื่นขึ้น)
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    let actionHtml = `
+                        <div class="glass-panel p-6 rounded-3xl relative overflow-hidden border-2 animate-flip-up ${role.border} shadow-2xl backdrop-blur-xl">
+                            <div class="absolute top-0 left-0 w-full h-1 ${role.bg.replace('/30','/80')}"></div>
+                            <header class="flex items-center gap-4 mb-6 pb-4 border-b border-white/10">
+                                <div class="w-12 h-12 flex items-center justify-center bg-slate-900/50 rounded-full">
+                                    <i class="fa-solid ${role.icon} text-2xl ${role.color}"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-white">${role.label}</h2>
+                                    <p class="text-sm text-slate-400 opacity-80">บทบาทของคุณ</p>
+                                </div>
+                            </header>
+                    `;
+
+                    if (role.id === 'villager' || role.id === 'madman') {
+                        actionHtml += `
+                            <div class="text-center py-10">
+                                <i class="fa-solid ${role.icon} text-7xl mx-auto mb-6 animate-pulse ${role.color} opacity-80"></i>
+                                <h3 class="text-3xl font-bold text-slate-300 mb-4">คุณกำลังหลับ...</h3>
+                                <p class="text-slate-400 mb-8 text-lg leading-relaxed px-4">
+                                    ${role.id === 'madman' ? 'แผนคือทำตัวน่าสงสัยให้คนอื่นโหวตออก!' : 'คืนนี้ไม่มีอะไรทำ แกล้งกดเล่นๆ แล้วหลับต่อ'}
+                                </p>
+                                <button onclick="completeNightTurn()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-5 rounded-2xl text-lg shadow-lg transition-transform active:scale-95 duration-500 border border-slate-500/30">
+                                    แกล้งทำเป็นเสร็จแล้ว (หลับต่อ)
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        actionHtml += `
+                            <p class="text-xl mb-6 text-slate-200 text-center font-light bg-slate-900/40 p-3 rounded-xl">${role.actionVerb}:</p>
+                        `;
+                        
+                        if (role.id === 'werewolf' && state.nightActions.werewolfTarget && !state.tempSelection) {
+                            const friendTarget = state.players.find(p => p.id === state.nightActions.werewolfTarget)?.name;
+                            actionHtml += `<div class="mb-4 bg-red-900/40 p-3 rounded-xl text-center text-sm border border-red-500/30 flex items-center justify-center gap-2 animate-pulse"><span class="text-red-300 font-bold">เพื่อนเลือก:</span> <span class="font-bold text-white text-lg">${friendTarget}</span></div>`;
+                        }
+
+                        actionHtml += `<div class="grid grid-cols-2 gap-3 max-h-[45vh] overflow-y-auto p-2 mb-6 mask-fade-y custom-scrollbar">`;
+                        
+                        getAlivePlayers().forEach(p => {
+                            const isDisabled = (p.id === current.id && role.id === 'guard');
+                            const isSelected = state.tempSelection === p.id;
+                            
+                            actionHtml += `
+                                <button onclick="state.tempSelection = ${p.id}; render()" class="p-4 rounded-2xl border transition-all duration-500 active:scale-95 flex flex-col items-center relative overflow-hidden group 
+                                    ${isDisabled ? 'opacity-40 cursor-not-allowed bg-slate-900 border-slate-800' : 
+                                      isSelected ? 'bg-purple-600/30 border-purple-400 ring-2 ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30'}
+                                " ${isDisabled ? 'disabled' : ''}>
+                                    <div class="w-14 h-14 rounded-full flex items-center justify-center text-2xl mb-2 transition-all duration-500 ${isSelected ? 'bg-purple-500 text-white scale-110 shadow-lg' : 'bg-slate-700/50 text-slate-400 group-hover:bg-slate-600'}">
+                                        ${isSelected ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-user"></i>'}
+                                    </div>
+                                    <span class="font-bold text-white truncate w-full text-center text-lg">${p.name}</span>
+                                </button>
+                            `;
+                        });
+                        actionHtml += `</div>`;
+
+                        if (state.tempSelection) {
+                            const targetName = state.players.find(p => p.id === state.tempSelection).name;
+                            actionHtml += `<button onclick="confirmNightAction()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-5 rounded-2xl text-xl shadow-lg animate-bounce-slow transition-transform active:scale-95 duration-500 border border-green-400/30">ยืนยันเลือก "${targetName}"</button>`;
+                        } else {
+                            actionHtml += `<button onclick="state.tempSelection = null; confirmNightAction()" class="w-full mt-2 bg-slate-800/80 hover:bg-slate-700 p-4 rounded-2xl text-base text-slate-400 border border-slate-600 transition-colors duration-500">ไม่ทำอะไร / ข้าม (ยืนยัน)</button>`;
+                        }
+                    }
+                    actionHtml += `</div>`;
+                    container.innerHTML = actionHtml;
+                }
+            }
+
+            else if (state.phase === 'DAY_RESULTS' || state.phase === 'VOTE_PASS' || state.phase === 'VOTE_ACTION' || state.phase === 'VOTE_RESULT') {
+                if (state.phase === 'DAY_RESULTS') {
+                    container.innerHTML = `
+                        <header class="flex justify-between items-center mb-8">
+                            <h1 class="text-3xl font-bold flex items-center gap-3 text-slate-800"><i class="fa-solid fa-sun text-yellow-500 animate-spin-slow" style="animation-duration: 10s"></i> วันที่ ${state.dayCount}</h1>
+                            <button onclick="resetGame()" class="text-sm text-red-500 hover:bg-red-100 p-3 rounded-xl flex items-center gap-2 border border-red-200 transition-colors duration-500 font-bold"><i class="fa-solid fa-rotate-left"></i> เริ่มใหม่</button>
+                        </header>
+                        
+                        ${state.nightResult ? `
+                            <div class="glass-panel bg-white/60 p-8 rounded-3xl text-center mb-8 animate-fade-in border-white/60 shadow-xl backdrop-blur-md">
+                                <h2 class="text-2xl font-bold mb-4 flex justify-center items-center gap-3 text-slate-700"><i class="fa-solid fa-moon"></i> ผลเมื่อคืน</h2>
+                                <div class="text-xl text-slate-800 mb-8 font-medium bg-white/70 p-6 rounded-2xl border border-white/80 shadow-inner leading-relaxed">${state.nightResult.message}</div>
+                                ${state.nightResult.deadPlayerId ? '<i class="fa-solid fa-skull text-5xl text-red-500 mx-auto mb-6 animate-bounce-slow"></i>' : ''}
+                                <button onclick="startSecretVoting()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 rounded-2xl shadow-lg flex items-center justify-center gap-3 text-xl transition-transform active:scale-95 duration-500 border border-blue-400/30">
+                                    <i class="fa-solid fa-gavel"></i> เริ่มโหวต (ส่งมือถือ)
+                                </button>
+                            </div>
+                        ` : ''}
+
+                        <div class="glass-panel bg-white/40 p-6 rounded-3xl border-white/50 backdrop-blur-sm">
+                            <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase tracking-wider text-center flex items-center justify-center gap-2"><i class="fa-solid fa-users"></i> สถานะผู้เล่น (${getAlivePlayers().length}/${state.players.length})</h3>
+                            <div class="grid grid-cols-3 gap-3 text-sm mask-fade-y max-h-[30vh] overflow-y-auto custom-scrollbar">
+                                ${state.players.map(p => `
+                                    <div class="p-3 rounded-xl text-center truncate font-medium transition-all duration-500 ${p.isAlive ? 'bg-white/80 text-slate-800 shadow-sm border border-white/70' : 'bg-slate-400/30 text-slate-500 line-through grayscale'}">${p.name}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } 
+                else if (state.phase === 'VOTE_PASS') {
+                    const voter = state.voteOrder[state.currentVoterIndex];
+                    container.innerHTML = `
+                        <div class="glass-panel bg-white/40 p-10 rounded-3xl text-center animate-fade-in border-white/50 shadow-2xl mt-10 backdrop-blur-xl">
+                            <div class="w-32 h-32 bg-blue-100/80 rounded-full mx-auto mb-8 flex items-center justify-center text-5xl shadow-inner border border-blue-200 text-blue-600 animate-float">📱</div>
+                            <h2 class="text-2xl font-bold text-slate-800 mb-2">ขั้นตอน: โหวตลับ</h2>
+                            <p class="text-slate-600 mb-6 text-lg">ส่งมือถือให้...</p>
+                            <div class="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-10 break-words tracking-tight drop-shadow-md">
+                                "${voter.name}"
+                            </div>
+                            <button onclick="state.isPassingPhone = false; state.phase = 'VOTE_ACTION'; state.tempSelection = null; render()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 rounded-2xl text-xl shadow-lg transition-transform active:scale-95 duration-500 border border-blue-400/30">
+                                ฉันคือ ${voter.name} (โหวต)
+                            </button>
+                        </div>
+                    `;
+                }
+                else if (state.phase === 'VOTE_ACTION') {
+                    const voter = state.voteOrder[state.currentVoterIndex];
+                    let html = `
+                        <div class="glass-panel bg-white/60 p-6 rounded-3xl shadow-2xl backdrop-blur-xl border-white/70 animate-flip-up mt-4">
+                            <h2 class="text-2xl font-bold mb-3 flex justify-center items-center gap-3 text-slate-800"><i class="fa-solid fa-gavel"></i> เลือกคนที่จะโหวต</h2>
+                            <p class="text-center text-slate-600 mb-6 text-base bg-white/50 p-2 rounded-lg inline-block mx-auto">⚠️ การโหวตนี้เป็นความลับ</p>
+                            
+                            <div class="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto p-2 mb-6 mask-fade-y custom-scrollbar">
+                                <button onclick="state.tempSelection = null; render()" class="col-span-2 py-4 rounded-2xl font-bold shadow-sm border transition-all duration-500 ${state.tempSelection === null ? 'bg-slate-700 text-white ring-4 ring-slate-300 scale-[1.02]' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}">
+                                    <i class="fa-solid fa-ban mr-2"></i> งดออกเสียง / ไม่โหวตใคร
+                                </button>
+                                ${state.voteOrder.map(p => `
+                                    <button onclick="state.tempSelection = ${p.id}; render()" 
+                                        class="p-4 rounded-2xl border font-bold flex flex-col items-center justify-center gap-2 transition-all duration-500 active:scale-95
+                                        ${state.tempSelection === p.id ? 'bg-red-600 text-white ring-4 ring-red-200 shadow-xl transform scale-105' : 'bg-white text-slate-800 border-slate-200 hover:bg-red-50 hover:border-red-200'}
+                                        ${p.id === voter.id ? 'opacity-40 cursor-not-allowed grayscale bg-slate-100' : ''}"
+                                        ${p.id === voter.id ? 'disabled' : ''}
+                                    >
+                                        ${state.tempSelection === p.id ? '<i class="fa-solid fa-check-circle text-2xl mb-1"></i>' : ''} 
+                                        <span class="truncate w-full text-center">${p.name}</span>
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <button onclick="confirmVote()" class="w-full bg-slate-800 hover:bg-black text-white font-bold py-5 rounded-2xl text-xl shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95 duration-500">
+                                <i class="fa-solid fa-fingerprint"></i> ยืนยันการโหวต
+                            </button>
+                        </div>
+                    `;
+                    container.innerHTML = html;
+                }
+                else if (state.phase === 'VOTE_RESULT') {
+                    container.innerHTML = `
+                        <div class="glass-panel bg-white/50 p-8 rounded-3xl text-center mb-6 animate-fade-in border-white/60 shadow-2xl mt-10 backdrop-blur-xl">
+                            <h2 class="text-3xl font-bold mb-6 text-slate-800">ผลการลงคะแนน</h2>
+                            <div class="text-xl font-medium text-slate-800 mb-8 p-8 bg-white/70 rounded-2xl border border-white/80 shadow-inner leading-relaxed">${state.voteResult}</div>
+                            ${state.voteResult.includes('ประหาร') ? '<i class="fa-solid fa-skull text-7xl text-red-600 mx-auto mb-8 animate-bounce-slow filter drop-shadow-lg"></i>' : ''}
+                            
+                            ${state.winner 
+                                ? '<div class="animate-pulse font-extrabold text-3xl text-purple-600 my-4">เกมจบลงแล้ว!</div>' 
+                                : '<button onclick="startNightPhase()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-5 rounded-2xl shadow-lg flex items-center justify-center gap-3 text-xl transition-transform active:scale-95 duration-500"><i class="fa-solid fa-moon"></i> เริ่มคืนต่อไป</button>'
+                            }
+                        </div>
+                    `;
+                }
+            }
+
+            else if (state.phase === 'GAME_OVER') {
+                const title = state.winner === 'VILLAGER' ? 'ชาวบ้านชนะ!' : (state.winner === 'MADMAN' ? 'คนบ้าชนะ!' : 'หมาป่าชนะ!');
+                const icon = state.winner === 'VILLAGER' ? 'fa-sun' : (state.winner === 'MADMAN' ? 'fa-ghost' : 'fa-moon');
+                const color = state.winner === 'VILLAGER' ? 'text-yellow-400' : (state.winner === 'MADMAN' ? 'text-pink-400' : 'text-red-500');
+                
+                container.innerHTML = `
+                    <div class="glass-panel p-10 rounded-3xl text-center animate-flip-up border-4 border-current shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl" style="border-color: currentColor; border-opacity: 0.5;">
+                        <i class="fa-solid ${icon} text-9xl ${color} mx-auto mb-6 animate-bounce-slow drop-shadow-2xl"></i>
+                        <h1 class="text-5xl font-extrabold mb-4 uppercase tracking-widest leading-relaxed drop-shadow-lg">${title}</h1>
+                        <p class="text-xl opacity-80 mb-10 font-light">เกมจบลงในวันที่ ${state.dayCount}</p>
+
+                        <div class="mb-10 bg-black/40 p-6 rounded-2xl border border-white/10 shadow-inner relative overflow-hidden h-80 mask-fade-y">
+                            <h3 class="font-bold mb-6 text-xl underline decoration-2 underline-offset-8 text-white/90 z-10 relative bg-slate-900/50 inline-block px-4 py-1 rounded-full backdrop-blur-md">เฉลยบทบาท</h3>
+                            
+                            <!-- Credits Scroll Container -->
+                            <div class="animate-credits absolute top-0 left-0 w-full px-6 pb-10 flex flex-col gap-3">
+                                ${state.players.map(p => `
+                                    <div class="flex justify-between items-center p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-colors duration-500">
+                                        <span class="font-bold text-lg ${p.isAlive ? 'text-white' : 'line-through opacity-50 text-slate-400'}">${p.name}</span>
+                                        <span class="text-sm flex items-center gap-2 font-bold px-4 py-1.5 rounded-full bg-black/40 ${p.role.color}">
+                                            <i class="fa-solid ${p.role.icon}"></i> ${p.role.label}
+                                        </span>
+                                    </div>
+                                `).join('')}
+                                <!-- Spacer at bottom for loop smoothness -->
+                                <div class="h-20"></div>
+                            </div>
+                        </div>
+
+                        <button onclick="resetGame()" class="w-full font-bold py-5 rounded-2xl text-2xl shadow-xl flex items-center justify-center gap-3 transition-transform active:scale-95 duration-500 ${state.winner === 'VILLAGER' ? 'bg-blue-600 hover:bg-blue-500' : (state.winner === 'MADMAN' ? 'bg-pink-600 hover:bg-pink-500' : 'bg-red-600 hover:bg-red-500')} text-white ring-4 ring-white/20">
+                            <i class="fa-solid fa-rotate-left"></i> เล่นใหม่อีกครั้ง
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Initial Render
+        render();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Liquid Glass Pong</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap');
+
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            --glass-inset: inset 0 0 15px rgba(255, 255, 255, 0.2);
+            --text-color: #1a2634;
+            --primary-gradient: linear-gradient(135deg, #6dd5ed, #2193b0);
+            --active-glass: rgba(255, 255, 255, 0.6);
+            --accent-color: #ff6b6b;
+            
+            /* New Variable for higher opacity inputs */
+            --input-bg: rgba(255, 255, 255, 0.85); 
+            --input-bg-hover: rgba(255, 255, 255, 0.95);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Kanit', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(45deg, #fdfbfb, #ebedee, #dbe6f6, #c2e9fb);
+            background-size: 400% 400%;
+            animation: gradientBG 25s ease infinite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            color: var(--text-color);
+            touch-action: none;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Floating Blobs */
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(50px);
+            z-index: -1;
+            opacity: 0.6;
+            animation: float 15s infinite ease-in-out alternate;
+        }
+        .blob-1 { top: -5%; left: -5%; width: 50vw; height: 50vw; background: #89f7fe; }
+        .blob-2 { bottom: -5%; right: -5%; width: 40vw; height: 40vw; background: #66a6ff; animation-delay: -5s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(30px, 40px) rotate(10deg); }
+        }
+
+        /* Main Container */
+        #game-container {
+            position: relative;
+            width: 950px;
+            max-width: 98%;
+            height: 700px;
+            max-height: 98vh;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+
+        @media (max-width: 1024px) {
+            #game-container {
+                width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+                border-radius: 0; border: none; box-shadow: none;
+                background: rgba(255, 255, 255, 0.1);
+            }
+            .screen { padding: 20px; box-sizing: border-box; }
+        }
+
+        /* Screens */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 10; opacity: 1; transform: scale(1);
+            overflow-y: auto; padding: 10px 0;
+        }
+
+        .hidden {
+            opacity: 0; pointer-events: none; z-index: -1;
+            transform: scale(0.95); filter: blur(10px);
+            display: none !important;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem); margin-bottom: 20px; margin-top: 10px;
+            background: linear-gradient(to right, #1e3c72, #2a5298);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-shadow: 0 5px 15px rgba(30, 60, 114, 0.1);
+            font-weight: 600; text-align: center;
+            animation: breathe 4s ease-in-out infinite;
+        }
+
+        /* Layout Grid */
+        .settings-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
+            width: 90%; max-width: 750px; margin-bottom: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .settings-grid { grid-template-columns: 1fr; gap: 10px; }
+            .setting-item.time-col { grid-column: span 1; }
+        }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .setting-item {
+            display: flex; flex-direction: column; position: relative;
+            opacity: 0; animation: slideUpFade 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            transition: all 0.3s ease;
+        }
+
+        .setting-item:nth-child(1) { animation-delay: 0.1s; }
+        .setting-item:nth-child(2) { animation-delay: 0.15s; }
+        .setting-item:nth-child(3) { animation-delay: 0.2s; }
+        .setting-item:nth-child(4) { animation-delay: 0.25s; }
+        .setting-item:nth-child(5) { animation-delay: 0.3s; }
+        .setting-item:nth-child(6) { animation-delay: 0.35s; }
+        .setting-item:nth-child(7) { animation-delay: 0.4s; }
+        .setting-item:nth-child(8) { animation-delay: 0.45s; }
+        
+        .setting-item.time-col { grid-column: span 1; }
+
+        .setting-label {
+            font-size: 0.9rem; margin-bottom: 5px; color: #444;
+            font-weight: 600; padding-left: 8px;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+        }
+
+        /* Glass Input - INCREASED OPACITY HERE */
+        .glass-input {
+            width: 100%; padding: 10px 15px; border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            background: var(--input-bg); /* Changed from 0.65 to variable (0.85) */
+            color: var(--text-color);
+            font-family: 'Kanit', sans-serif; font-size: 1rem;
+            outline: none; box-sizing: border-box; transition: 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        }
+        .glass-input:focus {
+            background: var(--input-bg-hover); 
+            border-color: #2a5298;
+            box-shadow: 0 0 15px rgba(42, 82, 152, 0.15);
+        }
+
+        /* Time Selection UI */
+        .time-wrapper { position: relative; width: 100%; min-height: 45px; }
+        .preset-container { display: flex; gap: 5px; width: 100%; }
+        .custom-input-container { display: flex; gap: 5px; width: 100%; align-items: center; }
+
+        /* Time Buttons - INCREASED OPACITY HERE */
+        .time-preset-btn {
+            flex: 1; padding: 10px 0; text-align: center; border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            background: var(--input-bg); /* More opaque */
+            color: #555; cursor: pointer; font-weight: bold;
+            font-family: 'Kanit', sans-serif; font-size: 0.9rem;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .time-preset-btn:hover { background: var(--input-bg-hover); transform: translateY(-2px); }
+        .time-preset-btn:active { transform: scale(0.95); }
+        .time-preset-btn.active {
+            background: #fff; border-color: #2a5298; color: #1e3c72;
+            box-shadow: 0 0 10px rgba(42, 82, 152, 0.1);
+        }
+        .back-btn { flex: 0 0 40px; font-size: 1.2rem; padding: 5px; }
+
+        /* Custom Glass Dropdown */
+        .glass-select { position: relative; width: 100%; z-index: 5; }
+        
+        .settings-grid .setting-item:nth-child(1), .settings-grid .setting-item:nth-child(2) { z-index: 20; }
+        .settings-grid .setting-item:nth-child(3), .settings-grid .setting-item:nth-child(4) { z-index: 15; }
+        .settings-grid .setting-item:nth-child(5), .settings-grid .setting-item:nth-child(6) { z-index: 10; }
+
+        /* Select Trigger - INCREASED OPACITY HERE */
+        .select-trigger {
+            width: 100%; padding: 10px 15px; border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            background: var(--input-bg); /* More opaque */
+            color: var(--text-color); font-family: 'Kanit', sans-serif;
+            font-size: 1rem; text-align: left; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            box-sizing: border-box; transition: background 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        }
+        .select-trigger:hover { background: var(--input-bg-hover); }
+        .select-trigger::after { content: '▼'; font-size: 0.8rem; opacity: 0.6; transition: transform 0.4s; }
+        .glass-select.active .select-trigger::after { transform: rotate(180deg); }
+
+        .select-options {
+            position: absolute; top: 105%; left: 0; width: 100%;
+            background: #fff; /* Solid white for maximum readability in dropdown */
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            z-index: 100; opacity: 0; visibility: hidden;
+            transform: translateY(-15px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-height: 150px; overflow-y: auto;
+        }
+        .glass-select.active .select-options { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+
+        .option { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 0.9rem; transition: all 0.2s; }
+        .option:hover { background: rgba(42, 82, 152, 0.1); color: #1e3c72; padding-left: 20px; }
+        .option.selected { background: rgba(42, 82, 152, 0.15); font-weight: 600; }
+
+        /* Buttons - INCREASED OPACITY HERE */
+        .btn {
+            margin-top: 15px; padding: 12px 50px; font-size: 1.2rem;
+            border: none; border-radius: 50px;
+            background: var(--input-bg); /* More opaque */
+            border: 1px solid rgba(255,255,255,0.8);
+            color: #1e3c72; font-weight: 600; cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative; overflow: hidden;
+            font-family: 'Kanit', sans-serif;
+        }
+        .btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            background: #fff; /* Solid white on hover */
+            box-shadow: 0 15px 30px rgba(30, 60, 114, 0.15);
+        }
+        .btn:active { transform: scale(0.95); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+
+        /* Rotate Overlay */
+        #rotate-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.85); /* More opaque */
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 200; color: #1e3c72; text-align: center;
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+        .rotate-icon {
+            font-size: 4rem; margin-bottom: 20px; color: #ff6b6b;
+            text-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+            animation: rotatePhone 2s infinite ease-in-out;
+        }
+        @keyframes rotatePhone {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+            100% { transform: rotate(-90deg); }
+        }
+
+        /* Touch Controls */
+        .touch-controls {
+            position: absolute; top: 0; height: 100%; width: 150px;
+            display: none; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 40; pointer-events: none;
+        }
+        .touch-left { left: 0; } .touch-right { right: 0; }
+
+        .touch-btn {
+            width: 80px; height: 80px; margin: 20px;
+            border-radius: 50%; background: rgba(255, 255, 255, 0.3); /* Slightly more visible */
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(5px);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2rem; color: rgba(255, 255, 255, 0.8);
+            pointer-events: auto; user-select: none; -webkit-user-select: none;
+            touch-action: none; transition: transform 0.1s;
+        }
+        .touch-btn:active { background: rgba(255, 255, 255, 0.6); color: #1e3c72; transform: scale(0.9); }
+
+        /* Countdown */
+        #countdown-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px);
+            z-index: 50;
+        }
+        #countdown-text {
+            font-size: 8rem; font-weight: bold; color: #1e3c72;
+            text-shadow: 0 10px 30px rgba(255, 255, 255, 0.8);
+            animation: pulseCount 0.9s infinite;
+        }
+        @keyframes pulseCount {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        #game-canvas { width: 100%; height: 100%; display: block; }
+
+        /* UI Layer (HUD) */
+        #ui-layer {
+            position: absolute; top: 20px; left: 0; width: 100%;
+            display: flex; justify-content: space-between; padding: 0 40px;
+            box-sizing: border-box; pointer-events: none;
+            font-size: 1.5rem; font-weight: 600; color: #2a5298;
+            text-shadow: 0 2px 10px rgba(255,255,255, 0.8);
+            z-index: 45; align-items: flex-start;
+        }
+
+        /* Center HUD (Timer + Pause) */
+        .center-hud {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 10px;
+            pointer-events: auto;
+        }
+
+        #timer-display {
+            font-size: 1.2rem; background: rgba(255, 255, 255, 0.6); /* More visible */
+            padding: 8px 25px; border-radius: 30px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.6);
+            min-width: 60px; text-align: center;
+        }
+
+        /* Pause Button */
+        #pause-btn {
+            font-size: 1.2rem; background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%; width: 40px; height: 40px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; color: #1e3c72; backdrop-filter: blur(10px);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Removed padding-left to center correctly */
+        }
+        #pause-btn:hover { background: rgba(255, 255, 255, 0.9); transform: scale(1.1); }
+        #pause-btn:active { transform: scale(0.9); }
+
+        /* Paused State Style */
+        #pause-btn.paused-active {
+            background: rgba(255, 107, 107, 0.4); /* Red transparent */
+            color: white;
+            border-color: rgba(255, 107, 107, 0.6);
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.3);
+        }
+
+        /* Pause Menu Modal */
+        #pause-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.4); /* Increased opacity */
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 60;
+        }
+        
+        .pause-box {
+            background: rgba(255, 255, 255, 0.9); /* Almost solid */
+            padding: 40px; border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            text-align: center; width: 300px;
+            animation: popIn 0.3s ease;
+        }
+
+        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div id="game-container">
+        
+        <!-- Rotate Alert Overlay -->
+        <div id="rotate-overlay" class="hidden">
+            <div class="rotate-icon">📱</div>
+            <h2>กรุณาหมุนหน้าจอ<br>เพื่อเล่นเกม (แนวนอน)</h2>
+        </div>
+
+        <!-- Setting Screen -->
+        <div id="settings-screen" class="screen fade-enter">
+            <h1>🏓 Pong</h1>
+            
+            <div class="settings-grid">
+                <!-- Row 1 -->
+                <div class="setting-item" id="setting-mode">
+                    <span class="setting-label">โหมดเกม</span>
+                    <div class="glass-select" id="mode-select">
+                        <div class="select-trigger" onclick="toggleSelect('mode')">👤 Single Player</div>
+                        <div class="select-options">
+                            <div class="option selected" onclick="setOption('mode', 'single', '👤 Single Player')">👤 Single Player</div>
+                            <div class="option" onclick="setOption('mode', 'multi', '👥 Two Players')">👥 Two Players</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-item" id="setting-diff">
+                    <span class="setting-label">ความฉลาด AI</span>
+                    <div class="glass-select" id="diff-select">
+                        <div class="select-trigger" onclick="toggleSelect('diff')">Normal</div>
+                        <div class="select-options">
+                            <div class="option" onclick="setOption('diff', 'easy', 'Easy')">Easy</div>
+                            <div class="option selected" onclick="setOption('diff', 'normal', 'Normal')">Normal</div>
+                            <div class="option" onclick="setOption('diff', 'hard', 'Hard')">Hard</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2 -->
+                <div class="setting-item" id="setting-ball">
+                    <span class="setting-label">ความเร็วบอล</span>
+                    <div class="glass-select" id="ballspeed-select">
+                        <div class="select-trigger" onclick="toggleSelect('ballspeed')">Normal</div>
+                        <div class="select-options">
+                            <div class="option" onclick="setOption('ballspeed', 'slow', 'Slow')">Slow</div>
+                            <div class="option selected" onclick="setOption('ballspeed', 'normal', 'Normal')">Normal</div>
+                            <div class="option" onclick="setOption('ballspeed', 'fast', 'Fast')">Fast</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-item" id="setting-paddle">
+                    <span class="setting-label">ความเร็วไม้</span>
+                    <div class="glass-select" id="paddlespeed-select">
+                        <div class="select-trigger" onclick="toggleSelect('paddlespeed')">Normal</div>
+                        <div class="select-options">
+                            <div class="option" onclick="setOption('paddlespeed', 'slow', 'Slow')">Slow</div>
+                            <div class="option selected" onclick="setOption('paddlespeed', 'normal', 'Normal')">Normal</div>
+                            <div class="option" onclick="setOption('paddlespeed', 'fast', 'Fast')">Fast</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 3 -->
+                <div class="setting-item" id="setting-p1">
+                    <span class="setting-label">ผู้เล่น 1</span>
+                    <input type="text" id="p1-name" class="glass-input" value="Player 1" maxlength="8">
+                </div>
+
+                <div class="setting-item" id="setting-p2">
+                    <span class="setting-label" id="p2-label">ชื่อ CPU</span>
+                    <input type="text" id="p2-name" class="glass-input" value="Bot" maxlength="8">
+                </div>
+
+                <!-- Row 4 -->
+                <div class="setting-item" id="setting-score">
+                    <span class="setting-label">คะแนนชนะ</span>
+                    <input type="number" id="max-score" class="glass-input" value="5" min="1" max="50">
+                </div>
+
+                <div class="setting-item time-col" id="setting-time">
+                    <span class="setting-label">เวลา (นาที)</span>
+                    <div class="time-wrapper">
+                        <div id="time-presets" class="preset-container">
+                            <button class="time-preset-btn" onclick="setTimePreset(0)">∞</button>
+                            <button class="time-preset-btn" onclick="setTimePreset(1)">1</button>
+                            <button class="time-preset-btn active" onclick="setTimePreset(3)">3</button>
+                            <button class="time-preset-btn" onclick="showCustomInput()">✎</button>
+                        </div>
+                        <div id="time-input-container" class="custom-input-container hidden">
+                            <input type="number" id="time-limit" class="glass-input" value="3" min="0" max="60">
+                            <button class="time-preset-btn back-btn" onclick="showPresets()">↺</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn" onclick="checkOrientationAndStart()">Start Game</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen hidden">
+            <div id="ui-layer">
+                <div id="p1-score-display">P1: 0</div>
+                <div class="center-hud">
+                    <div id="timer-display">∞</div>
+                    <button id="pause-btn" onclick="pauseGame()">⏸</button>
+                </div>
+                <div id="p2-score-display">P2: 0</div>
+            </div>
+            
+            <div id="countdown-overlay" class="hidden">
+                <div id="countdown-text">3</div>
+            </div>
+
+            <div id="pause-screen" class="hidden">
+                <div class="pause-box">
+                    <h2 style="color: #1e3c72; margin-top:0;">พักเกม (Paused)</h2>
+                    <button class="btn" onclick="resumeGame()">เล่นต่อ (Resume)</button>
+                    <button class="btn btn-secondary" onclick="exitGame()">ออก (Exit)</button>
+                </div>
+            </div>
+
+            <!-- Touch Controls -->
+            <div class="touch-controls touch-left" id="p1-controls">
+                <div class="touch-btn" ontouchstart="touchStart('w')" ontouchend="touchEnd('w')">▲</div>
+                <div class="touch-btn" ontouchstart="touchStart('s')" ontouchend="touchEnd('s')">▼</div>
+            </div>
+            <div class="touch-controls touch-right" id="p2-controls">
+                <div class="touch-btn" ontouchstart="touchStart('ArrowUp')" ontouchend="touchEnd('ArrowUp')">▲</div>
+                <div class="touch-btn" ontouchstart="touchStart('ArrowDown')" ontouchend="touchEnd('ArrowDown')">▼</div>
+            </div>
+
+            <canvas id="game-canvas"></canvas>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="screen hidden">
+            <h1 id="winner-announce">Winner!</h1>
+            <p id="final-score">5 - 3</p>
+            <button class="btn" onclick="restartGame()">Play Again</button>
+            <button class="btn btn-secondary" onclick="showSettings()">Menu</button>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let gameLoopId;
+        let gameState = 'menu';
+        let isPaused = false;
+        
+        let config = {
+            mode: 'single',
+            p1Name: 'Player 1',
+            p2Name: 'Bot',
+            difficulty: 'normal',
+            ballSpeed: 'normal',
+            paddleSpeed: 'normal',
+            maxScore: 5,
+            timeLimit: 180,
+        };
+
+        const speedSettings = {
+            ball: { slow: 8, normal: 12, fast: 18 },
+            paddle: { slow: 10, normal: 15, fast: 20 }
+        };
+
+        let selectedMode = 'single';
+        let selectedDiff = 'normal';
+        let selectedBallSpeed = 'normal';
+        let selectedPaddleSpeed = 'normal';
+        let timer = 0;
+        let timerInterval;
+
+        const paddleWidth = 14;
+        const paddleHeight = 110;
+        const ballSize = 12;
+
+        let player1 = { x: 0, y: 0, score: 0, dy: 0, speed: 15 };
+        let player2 = { x: 0, y: 0, score: 0, dy: 0, speed: 15 };
+        let ball = { x: 0, y: 0, dx: 0, dy: 0, speed: 12, maxSpeed: 30 };
+        let particles = [];
+
+        let aiTargetY = 0;
+        let currentAiError = 0;
+
+        const keys = { w: false, s: false, ArrowUp: false, ArrowDown: false };
+
+        // --- UI & Orientation Logic ---
+        function checkOrientationAndStart() {
+            if (window.innerWidth < 768 && window.innerHeight > window.innerWidth) {
+                document.getElementById('rotate-overlay').classList.remove('hidden');
+                window.addEventListener('resize', handleRotation);
+            } else {
+                startGame();
+            }
+        }
+
+        function handleRotation() {
+            if (window.innerWidth > window.innerHeight) {
+                document.getElementById('rotate-overlay').classList.add('hidden');
+                window.removeEventListener('resize', handleRotation);
+                startGame();
+            }
+        }
+
+        function toggleSelect(id) {
+            const el = document.getElementById(id + '-select');
+            document.querySelectorAll('.glass-select').forEach(sel => {
+                if(sel.id !== id + '-select') sel.classList.remove('active');
+            });
+            el.classList.toggle('active');
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.matches('.select-trigger') && !event.target.closest('.select-options')) {
+                document.querySelectorAll('.glass-select').forEach(sel => sel.classList.remove('active'));
+            }
+        }
+
+        function setOption(type, value, text) {
+            if (type === 'mode') {
+                selectedMode = value;
+                const p2Label = document.getElementById('p2-label');
+                const p2Input = document.getElementById('p2-name');
+                const diffContainer = document.getElementById('setting-diff'); 
+                const scoreContainer = document.getElementById('setting-score');
+                const timeContainer = document.getElementById('setting-time');
+                const parentGrid = document.querySelector('.settings-grid');
+
+                if (value === 'single') {
+                    // Single Player Mode
+                    diffContainer.style.display = 'flex';
+                    p2Label.innerText = "ชื่อ CPU";
+                    p2Input.value = "Bot";
+                    parentGrid.insertBefore(scoreContainer, timeContainer);
+                } else {
+                    // Multi Player Mode
+                    diffContainer.style.display = 'none';
+                    p2Label.innerText = "ผู้เล่น 2"; // Updated to "ผู้เล่น 2"
+                    p2Input.value = "Player 2";
+                    const ballContainer = document.getElementById('setting-ball');
+                    parentGrid.insertBefore(scoreContainer, ballContainer);
+                }
+            } else if (type === 'diff') selectedDiff = value;
+            else if (type === 'ballspeed') selectedBallSpeed = value;
+            else if (type === 'paddlespeed') selectedPaddleSpeed = value;
+
+            const selectEl = document.getElementById(type + '-select');
+            selectEl.querySelector('.select-trigger').innerText = text;
+            selectEl.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected');
+                if(opt.innerText === text) opt.classList.add('selected');
+            });
+            selectEl.classList.remove('active');
+        }
+
+        function setTimePreset(val) {
+            document.getElementById('time-limit').value = val;
+            const btns = document.querySelectorAll('.time-preset-btn');
+            btns.forEach(btn => btn.classList.remove('active'));
+            btns.forEach(btn => {
+                let btnVal = btn.innerText === '∞' ? 0 : parseInt(btn.innerText);
+                if(btnVal === val && !isNaN(btnVal)) btn.classList.add('active');
+            });
+        }
+
+        function showCustomInput() {
+            document.getElementById('time-presets').classList.add('hidden');
+            document.getElementById('time-input-container').classList.remove('hidden');
+        }
+
+        function showPresets() {
+            document.getElementById('time-input-container').classList.add('hidden');
+            document.getElementById('time-presets').classList.remove('hidden');
+        }
+
+        // --- Pause Logic ---
+        function pauseGame() {
+            if (gameState !== 'playing') return;
+            isPaused = true;
+            document.getElementById('pause-screen').classList.remove('hidden');
+            
+            // Change Icon to Play Triangle and Style to Red
+            const btn = document.getElementById('pause-btn');
+            btn.innerHTML = '▶';
+            btn.classList.add('paused-active');
+        }
+
+        function resumeGame() {
+            isPaused = false;
+            document.getElementById('pause-screen').classList.add('hidden');
+            
+            // Revert Icon and Style
+            const btn = document.getElementById('pause-btn');
+            btn.innerHTML = '⏸';
+            btn.classList.remove('paused-active');
+        }
+
+        function exitGame() {
+            isPaused = false;
+            gameState = 'menu';
+            document.getElementById('pause-screen').classList.add('hidden');
+            
+            // Reset Pause Button
+            const btn = document.getElementById('pause-btn');
+            btn.innerHTML = '⏸';
+            btn.classList.remove('paused-active');
+
+            showSettings();
+        }
+
+        // --- Touch Logic ---
+        function touchStart(key) {
+            if(gameState === 'playing' && !isPaused) keys[key] = true;
+        }
+        function touchEnd(key) { keys[key] = false; }
+
+        // --- Game Logic ---
+        window.addEventListener('keydown', (e) => { 
+            if(gameState === 'playing' && !isPaused) keys[e.key] = true; 
+            if(e.key === 'Escape') {
+                if(isPaused) resumeGame();
+                else if(gameState === 'playing') pauseGame();
+            }
+        });
+        window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+        window.addEventListener('resize', resizeCanvas);
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            resetPositions();
+        }
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            
+            if (type === 'hit') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now+0.1);
+                gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now+0.1);
+                osc.start(); osc.stop(now+0.1);
+            } else if (type === 'score') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(600, now+0.2);
+                gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now+0.3);
+                osc.start(); osc.stop(now+0.3);
+            } else if (type === 'beep') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now+0.1);
+                osc.start(); osc.stop(now+0.1);
+            } else if (type === 'go') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(1000, now);
+                gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now+0.3);
+                osc.start(); osc.stop(now+0.3);
+            }
+        }
+
+        // Particle System
+        function createParticles(x, y, color) {
+            for(let i=0; i<10; i++) {
+                particles.push({
+                    x: x, y: y,
+                    dx: (Math.random() - 0.5) * 10,
+                    dy: (Math.random() - 0.5) * 10,
+                    life: 1, color: color
+                });
+            }
+        }
+
+        function drawParticles() {
+            for(let i=0; i<particles.length; i++) {
+                let p = particles[i];
+                p.x += p.dx; p.y += p.dy; p.life -= 0.04;
+                ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+            particles = particles.filter(p => p.life > 0);
+        }
+
+        function triggerShake() {
+            const container = document.getElementById('game-container');
+            container.classList.remove('shake');
+            void container.offsetWidth; // Trigger reflow
+            container.classList.add('shake');
+        }
+
+        function startGame() {
+            initAudio();
+            config.mode = selectedMode;
+            config.difficulty = selectedDiff;
+            config.ballSpeed = selectedBallSpeed;
+            config.paddleSpeed = selectedPaddleSpeed;
+            
+            let timeVal = parseInt(document.getElementById('time-limit').value);
+            if(isNaN(timeVal) || timeVal < 0) timeVal = 0;
+            config.timeLimit = timeVal * 60;
+
+            config.p1Name = document.getElementById('p1-name').value || 'P1';
+            config.p2Name = document.getElementById('p2-name').value || 'Bot';
+            config.maxScore = parseInt(document.getElementById('max-score').value) || 5;
+
+            player1.speed = speedSettings.paddle[config.paddleSpeed];
+            
+            if (config.mode === 'multi') {
+                player2.speed = speedSettings.paddle[config.paddleSpeed];
+                document.getElementById('p1-controls').style.display = 'flex';
+                document.getElementById('p2-controls').style.display = 'flex';
+            } else {
+                let baseAiSpeed = 0;
+                if (config.difficulty === 'easy') baseAiSpeed = 5;
+                else if (config.difficulty === 'normal') baseAiSpeed = 9;
+                else baseAiSpeed = 19;
+
+                if(config.paddleSpeed === 'slow') baseAiSpeed *= 0.8;
+                if(config.paddleSpeed === 'fast') baseAiSpeed *= 1.2;
+                
+                player2.speed = baseAiSpeed;
+                document.getElementById('p1-controls').style.display = 'flex';
+                document.getElementById('p2-controls').style.display = 'none';
+            }
+
+            if (window.innerWidth > 1024) {
+                 document.getElementById('p1-controls').style.display = 'none';
+                 document.getElementById('p2-controls').style.display = 'none';
+            }
+
+            document.getElementById('settings-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            resizeCanvas();
+            player1.score = 0; player2.score = 0;
+            timer = config.timeLimit;
+            isPaused = false;
+            document.getElementById('pause-screen').classList.add('hidden');
+            
+            updateScoreBoard();
+            resetBall();
+            
+            startCountdown();
+        }
+
+        function startCountdown() {
+            gameState = 'countdown';
+            let count = 3;
+            const overlay = document.getElementById('countdown-overlay');
+            const text = document.getElementById('countdown-text');
+            
+            overlay.classList.remove('hidden');
+            text.innerText = count;
+            playSound('beep');
+
+            const intv = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    text.innerText = count;
+                    playSound('beep');
+                    text.style.animation = 'none';
+                    text.offsetHeight; 
+                    text.style.animation = 'pulseCount 0.9s infinite';
+                } else {
+                    clearInterval(intv);
+                    text.innerText = "GO!";
+                    playSound('go');
+                    setTimeout(() => {
+                        overlay.classList.add('hidden');
+                        startActualGame();
+                    }, 800);
+                }
+            }, 1000);
+        }
+
+        function startActualGame() {
+            gameState = 'playing';
+            clearInterval(timerInterval);
+            if (timer > 0) {
+                updateTimerDisplay();
+                timerInterval = setInterval(() => {
+                    if(!isPaused) {
+                        timer--;
+                        updateTimerDisplay();
+                        if (timer <= 0) endGame();
+                    }
+                }, 1000);
+            } else {
+                document.getElementById('timer-display').innerText = '∞';
+            }
+            cancelAnimationFrame(gameLoopId);
+            gameLoop();
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(timer / 60);
+            const s = timer % 60;
+            document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        function resetPositions() {
+            player1.x = 30;
+            player1.y = canvas.height/2 - paddleHeight/2;
+            player2.x = canvas.width - 30 - paddleWidth;
+            player2.y = canvas.height/2 - paddleHeight/2;
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            
+            let baseSpeed = speedSettings.ball[config.ballSpeed];
+            if (config.difficulty === 'hard' && config.mode === 'single') baseSpeed += 3;
+
+            ball.speed = baseSpeed;
+            ball.maxSpeed = baseSpeed * 2.5; 
+
+            const angle = (Math.random() * Math.PI/3) - Math.PI/6;
+            const dir = Math.random() > 0.5 ? 1 : -1;
+            ball.dx = ball.speed * Math.cos(angle) * dir;
+            ball.dy = ball.speed * Math.sin(angle);
+            aiTargetY = canvas.height / 2;
+            currentAiError = 0;
+            particles = [];
+        }
+
+        function update() {
+            if (gameState !== 'playing' || isPaused) return;
+
+            // Player 1
+            if (keys.w && player1.y > 0) player1.y -= player1.speed;
+            if (keys.s && player1.y < canvas.height - paddleHeight) player1.y += player1.speed;
+
+            // Player 2 / AI
+            if (config.mode === 'multi') {
+                if (keys.ArrowUp && player2.y > 0) player2.y -= player2.speed;
+                if (keys.ArrowDown && player2.y < canvas.height - paddleHeight) player2.y += player2.speed;
+            } else {
+                const paddleCenter = player2.y + paddleHeight / 2;
+                if (ball.dx > 0) {
+                    if (config.difficulty === 'easy' && ball.x < canvas.width * 0.4) {
+                    } else {
+                        aiTargetY = ball.y + currentAiError;
+                    }
+                } else {
+                    aiTargetY = canvas.height / 2;
+                }
+                if (Math.abs(paddleCenter - aiTargetY) > 10) {
+                    if (paddleCenter < aiTargetY) player2.y += player2.speed;
+                    else player2.y -= player2.speed;
+                }
+                player2.y = Math.max(0, Math.min(canvas.height - paddleHeight, player2.y));
+            }
+
+            // Ball Physics
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            if (ball.y < 0 || ball.y > canvas.height) { 
+                ball.dy *= -1; playSound('hit'); 
+                triggerShake(); // Shake on wall hit too? Maybe too much. Let's keep it.
+            }
+
+            // Collision
+            // P1
+            if (ball.dx < 0 && 
+                ball.x - ballSize < player1.x + paddleWidth && 
+                ball.x + ballSize > player1.x && 
+                ball.y + ballSize > player1.y && 
+                ball.y - ballSize < player1.y + paddleHeight) {
+                
+                ball.x = player1.x + paddleWidth + ballSize;
+                ball.dx *= -1;
+                let collidePoint = (ball.y - (player1.y + paddleHeight/2)) / (paddleHeight/2);
+                ball.dy = ball.speed * Math.sin(collidePoint * Math.PI/3);
+                
+                if(ball.speed < ball.maxSpeed) ball.speed += 0.5;
+                playSound('hit');
+                triggerShake();
+                createParticles(ball.x, ball.y, '#2980b9');
+
+                if (config.mode === 'single') {
+                    if(config.difficulty === 'easy') currentAiError = (Math.random() * 200) - 100;
+                    else if(config.difficulty === 'normal') currentAiError = (Math.random() * 80) - 40;
+                    else currentAiError = (Math.random() * 20) - 10;
+                }
+            }
+
+            // P2
+            if (ball.dx > 0 && 
+                ball.x + ballSize > player2.x && 
+                ball.x - ballSize < player2.x + paddleWidth && 
+                ball.y + ballSize > player2.y && 
+                ball.y - ballSize < player2.y + paddleHeight) {
+                
+                ball.x = player2.x - ballSize;
+                ball.dx *= -1;
+                let collidePoint = (ball.y - (player2.y + paddleHeight/2)) / (paddleHeight/2);
+                ball.dy = ball.speed * Math.sin(collidePoint * Math.PI/3);
+
+                if(ball.speed < ball.maxSpeed) ball.speed += 0.5;
+                playSound('hit');
+                triggerShake();
+                createParticles(ball.x, ball.y, config.mode === 'single' ? '#e74c3c' : '#2980b9');
+            }
+
+            if (ball.x < 0) { player2.score++; handleScore(); }
+            if (ball.x > canvas.width) { player1.score++; handleScore(); }
+        }
+
+        function handleScore() {
+            playSound('score');
+            updateScoreBoard();
+            if (player1.score >= config.maxScore || player2.score >= config.maxScore) endGame();
+            else resetBall();
+        }
+
+        function updateScoreBoard() {
+            document.getElementById('p1-score-display').innerText = `${config.p1Name}: ${player1.score}`;
+            document.getElementById('p2-score-display').innerText = `${config.p2Name}: ${player2.score}`;
+        }
+
+        function endGame() {
+            gameState = 'ended';
+            clearInterval(timerInterval);
+            let winner = (player1.score > player2.score) ? config.p1Name : (player2.score > player1.score ? config.p2Name : 'Draw');
+            document.getElementById('winner-announce').innerText = (winner === 'Draw') ? "Draw!" : `🏆 ${winner} Wins!`;
+            document.getElementById('final-score').innerText = `${player1.score} - ${player2.score}`;
+            
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('p1-controls').style.display = 'none';
+            document.getElementById('p2-controls').style.display = 'none';
+            document.getElementById('pause-screen').classList.add('hidden');
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.beginPath();
+            ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height);
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.setLineDash([10,15]); ctx.lineWidth=2; ctx.stroke();
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            roundRect(ctx, player1.x, player1.y, paddleWidth, paddleHeight, 8);
+            ctx.fillStyle = config.mode === 'single' ? '#ff7675' : 'rgba(255,255,255,0.9)';
+            roundRect(ctx, player2.x, player2.y, paddleWidth, paddleHeight, 8);
+            
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ballSize, 0, Math.PI*2);
+            ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.shadowBlur = 15; ctx.shadowColor = "rgba(255,255,255,0.6)"; ctx.fill(); ctx.shadowBlur = 0;
+
+            drawParticles();
+        }
+
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+            ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+            ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+            ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+            ctx.fill();
+        }
+
+        function gameLoop() {
+            if (gameState === 'playing') { update(); draw(); requestAnimationFrame(gameLoop); }
+        }
+
+        function restartGame() { checkOrientationAndStart(); }
+        function showSettings() {
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('settings-screen').classList.remove('hidden');
+            document.getElementById('p1-controls').style.display = 'none'; // Ensure controls hidden
+            document.getElementById('p2-controls').style.display = 'none'; // Ensure controls hidden
+            // Reset items opacity for animation replay (handled by keyframes on display block)
+            const items = document.querySelectorAll('.setting-item');
+            items.forEach(el => {
+                el.style.animation = 'none';
+                el.offsetHeight; /* trigger reflow */
+                el.style.animation = null; 
+            });
+            gameState = 'menu';
+        }
+    </script>
+</body>
+</html>

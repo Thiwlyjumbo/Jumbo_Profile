@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Dashboard | Thiwly</title>
+    <link rel="icon" href="pic/Profile.jpg" type="image/jpg" style="border: 50%;">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-text: #0f172a;
+            --accent: #6366f1;
+        }
+
+        body {
+            font-family: 'Outfit', 'Kanit', sans-serif;
+            background-color: #f8fafc;
+            color: var(--primary-text);
+            overflow-x: hidden;
+        }
+
+        /* --- Liquid Background Animation --- */
+        .liquid-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 50%, #fae8ff 100%);
+            overflow: hidden;
+        }
+
+        .blob {
+            position: absolute;
+            filter: blur(80px);
+            opacity: 0.6;
+            animation: float 10s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+        .blob-1 { width: 600px; height: 600px; background: #bfdbfe; top: -10%; left: -10%; animation-delay: 0s; }
+        .blob-2 { width: 500px; height: 500px; background: #ddd6fe; bottom: -10%; right: -10%; animation-delay: -2s; }
+        
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, 50px) scale(1.1); }
+        }
+
+        /* --- Sidebar Glass Style (Smoother & More Transparent) --- */
+        .sidebar {
+            background: rgba(255, 255, 255, 0.1); /* โปร่งใสขึ้น */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 4px 0 30px rgba(0, 0, 0, 0.05);
+            /* ปรับ Transition ให้ลื่นไหล (Smooth Cubic Bezier) */
+            transition: width 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.3s ease;
+            width: 5rem; /* 80px */
+            overflow: hidden;
+            z-index: 50;
+            will-change: width; /* บอก browser ให้เตรียม render */
+        }
+
+        .sidebar:hover {
+            width: 16rem; /* 256px */
+            background: rgba(255, 255, 255, 0.4); /* เพิ่มความทึบนิดหน่อยเมื่อชี้ */
+        }
+
+        /* Sidebar Items */
+        .nav-item {
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; height: 100%; width: 4px;
+            background: var(--accent);
+            transform: scaleY(0);
+            transition: transform 0.3s;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.4);
+            color: var(--accent);
+        }
+
+        .nav-item:hover::before {
+            transform: scaleY(1);
+        }
+
+        .nav-text {
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.4s ease;
+        }
+
+        .sidebar:hover .nav-text {
+            opacity: 1;
+            transform: translateX(0);
+            transition-delay: 0.1s;
+        }
+
+        /* --- Game Card Glass Style --- */
+        .game-card {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.5);
+            border-color: #fff;
+            box-shadow: 0 20px 50px -10px rgba(99, 102, 241, 0.15);
+        }
+
+        .game-img-container {
+            overflow: hidden;
+        }
+
+        .game-img {
+            transition: transform 0.6s ease;
+        }
+
+        .game-card:hover .game-img {
+            transform: scale(1.1);
+        }
+
+        /* --- Click Ripple Effect --- */
+        .click-ripple {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.4);
+            border: 1px solid rgba(99, 102, 241, 0.6);
+            transform: translate(-50%, -50%) scale(0);
+            pointer-events: none;
+            z-index: 9999;
+            animation: ripple-anim 0.6s linear forwards;
+        }
+
+        @keyframes ripple-anim {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(5); opacity: 0; }
+        }
+
+        /* --- Button & Interactive --- */
+        .btn-glow {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-glow:active {
+            transform: scale(0.95);
+        }
+
+        /* --- Modal Glass --- */
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+    </style>
+</head>
+<body class="h-screen flex selection:bg-indigo-200 selection:text-indigo-900 overflow-hidden">
+
+    <!-- Background -->
+    <div class="liquid-bg">
+        <div class="blob blob-1 rounded-full"></div>
+        <div class="blob blob-2 rounded-full"></div>
+    </div>
+
+    <!-- SIDEBAR NAV -->
+    <nav class="sidebar fixed h-full flex flex-col py-6">
+        <!-- Logo / User -->
+        <div class="flex items-center gap-4 px-5 mb-8 text-slate-800">
+            <div class="w-10 h-10 min-w-[2.5rem] rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-lg">
+                <i class="fas fa-user-astronaut text-lg"></i>
+            </div>
+            <div class="nav-text font-bold text-xl font-kanit">
+                Thiwly<span class="text-indigo-600">.Game</span>
+            </div>
+        </div>
+
+        <!-- Menu Items -->
+        <div class="flex-1 flex flex-col gap-2 w-full px-2">
+            <a href="index.html" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-slate-600 bg-white/30 text-indigo-600">
+                <div class="w-8 flex justify-center"><i class="fas fa-home text-xl"></i></div>
+                <span class="nav-text font-medium font-kanit">กลับหน้าหลัก</span>
+            </a>
+
+            <a href="Creator.html" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-slate-600">
+                <div class="w-8 flex justify-center"><i class="fas fa-layer-group text-xl"></i></div>
+                <span class="nav-text font-medium font-kanit">Creator</span>
+            </a>
+
+            <div class="my-4 border-t border-slate-400/20 mx-4"></div>
+
+            <a href="https://www.facebook.com/share/1GjpHvk46c/" target="_blank" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-slate-600 hover:text-blue-600">
+                <div class="w-8 flex justify-center"><i class="fab fa-facebook text-xl"></i></div>
+                <span class="nav-text font-medium">Facebook</span>
+            </a>
+
+            <a href="https://www.instagram.com/thiw.jumjum?igsh=ZHZ4YmdhenVueG40" target="_blank" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-slate-600 hover:text-pink-600">
+                <div class="w-8 flex justify-center"><i class="fab fa-instagram text-xl"></i></div>
+                <span class="nav-text font-medium">Instagram</span>
+            </a>
+
+            <a href="https://line.me/ti/p/w2fnfb_WQI" target="_blank" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-slate-600 hover:text-green-500">
+                <div class="w-8 flex justify-center"><i class="fab fa-line text-xl"></i></div>
+                <span class="nav-text font-medium">Line</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 ml-20 p-6 md:p-10 h-full overflow-y-auto custom-scroll">
+        
+        <!-- Header -->
+        <header class="mb-10 flex justify-between items-end gsap-header opacity-0">
+            <div>
+                <h1 class="text-4xl font-bold text-slate-800 font-kanit mb-2">Game Library</h1>
+                <p class="text-slate-500 font-kanit">เลือกเกมที่คุณต้องการเล่นหรือเรียนรู้</p>
+            </div>
+            <div class="hidden md:block">
+                <span class="px-4 py-2 bg-white/40 rounded-full text-sm font-bold text-indigo-600 border border-white/50 shadow-sm cursor-pointer hover:bg-white/60 transition-colors">
+                    <i class="fas fa-gamepad mr-2"></i> All Games (6)
+                </span>
+            </div>
+        </header>
+
+        <!-- GRID CONTAINER -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 pb-20">
+         
+            <!-- BackList -->
+            
+            <div class="game-card rounded-2xl overflow-hidden flex flex-col h-full cursor-pointer group hover:shadow-indigo-500/20" 
+                 onclick="openModal('BACKLISTED --[BETA]', 'บัญชดำ', 'อดีตทหารมือหนึ่งที่ถูก ไล่ออก เพราะขัดคำสั่งในโลกที่ความยุติธรรมเลี้ยงปากท้องไม่ได้...คุณและทีมต้องรับงาน ทหารรับจ้าง เพื่อความอยู่รอด', 'pic/image.png', 'https://www.roblox.com/th/games/125509300685388/Work-Simulator')">
+                <div class="game-img-container h-48 relative">
+                    <img src="pic/image.png" onerror="this.src='https://images.unsplash.com/photo-1614294149010-950b698f72c0?auto=format&fit=crop&w=800&q=80'" alt="BACKLISTED --[BETA]--" class="game-img w-full h-full object-cover">
+                    <div class="absolute top-3 right-3 bg-indigo-600 text-white text-xs px-2 py-1 rounded shadow-lg font-bold">New</div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                        <span class="text-white text-sm font-bold"><i class="fas fa-info-circle mr-1"></i> คลิกเพื่อดูรายละเอียด</span>
+                    </div>
+                </div>
+                <div class="p-5 flex flex-col flex-1">
+                    <h3 class="text-xl font-bold text-slate-800 font-kanit mb-1 leading-tight">BACKLISTED --[BETA]--</h3>
+                    <p class="text-slate-500 text-sm mb-4 font-kanit">บัญชีดำ</p>
+                    <div class="mt-auto">
+                        <button onclick="event.stopPropagation(); window.location.href='https://www.roblox.com/th/games/125509300685388/Work-Simulator'" class="btn-glow w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-lg hover:shadow-indigo-500/30 font-kanit tracking-wide flex items-center justify-center gap-2">
+                            <i class="fas fa-play text-xs"></i> Start Game
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            
+            <!-- Item 1: The Alchemist Grimoire -->
+            <div class="game-card rounded-2xl overflow-hidden flex flex-col h-full cursor-pointer group hover:shadow-indigo-500/20" 
+                 onclick="openModal('The Alchemist Grimoire', 'ตำราเวทแปรธาตุ', 'เกมแนวต่อสู้แนว Edutainment ที่ผู้เล่นต้องเก็บ ธาตุเคมีจริง ในแผนที่มาผสมกันเพื่อสร้างสกิลโจมตี เป็นการเรียนรู้วิทยาศาสตร์ผ่านการเล่นเกมที่สนุกสนาน', 'pic/HomePage.jfif', 'https://www.roblox.com/share?code=a1023d9a5cfa564ebdd1d0867d5d4851&type=ExperienceDetails&stamp=1765932738158')">
+                <div class="game-img-container h-48 relative">
+                    <img src="pic/HomePage.jfif" onerror="this.src='https://images.unsplash.com/photo-1614294149010-950b698f72c0?auto=format&fit=crop&w=800&q=80'" alt="The Alchemist Grimoire" class="game-img w-full h-full object-cover">
+                    <div class="absolute top-3 right-3 bg-indigo-600 text-white text-xs px-2 py-1 rounded shadow-lg font-bold">New</div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                        <span class="text-white text-sm font-bold"><i class="fas fa-info-circle mr-1"></i> คลิกเพื่อดูรายละเอียด</span>
+                    </div>
+                </div>
+                <div class="p-5 flex flex-col flex-1">
+                    <h3 class="text-xl font-bold text-slate-800 font-kanit mb-1 leading-tight">The Alchemist Grimoire</h3>
+                    <p class="text-slate-500 text-sm mb-4 font-kanit">ตำราเวทแปรธาตุ</p>
+                    <div class="mt-auto">
+                        <button onclick="event.stopPropagation(); window.location.href='https://www.roblox.com/share?code=a1023d9a5cfa564ebdd1d0867d5d4851&type=ExperienceDetails&stamp=1765932738158'" class="btn-glow w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-lg hover:shadow-indigo-500/30 font-kanit tracking-wide flex items-center justify-center gap-2">
+                            <i class="fas fa-play text-xs"></i> Start Game
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            
+
+            <!-- Item 2: Liquid Glass Pong (NEW) -->
+            <div class="game-card rounded-2xl overflow-hidden flex flex-col h-full group cursor-pointer" 
+                 onclick="openModal('Liquid Glass Pong', 'เกมปิงปองสไตล์ Glassmorphism', 'ท้าทายความสามารถของคุณในเกมปิงปองดีไซน์กระจกสุดล้ำ (Liquid Glass) กราฟิกสบายตา อนิเมชั่นลื่นไหล ปรับแต่งความยากได้ 3 ระดับ พร้อมโหมดผู้เล่นเดี่ยวและสองคน', 'https://images.unsplash.com/photo-1609710228159-0fa9bd7c0827?auto=format&fit=crop&w=800&q=80', 'PongGame.html')">
+                <div class="game-img-container h-48 bg-slate-200 relative">
+                    <img src="https://images.unsplash.com/photo-1609710228159-0fa9bd7c0827?auto=format&fit=crop&w=800&q=80" alt="Liquid Glass Pong" class="game-img w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
+                    <div class="absolute top-3 right-3 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-lg font-bold">Hot</div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                        <span class="text-white text-sm font-bold"><i class="fas fa-info-circle mr-1"></i> คลิกเพื่อดูรายละเอียด</span>
+                    </div>
+                </div>
+                <div class="p-5 flex flex-col flex-1">
+                    <h3 class="text-xl font-bold text-slate-800 font-kanit mb-1">Liquid Glass Pong</h3>
+                    <p class="text-slate-500 text-sm mb-4 font-kanit">เกมปิงปองสไตล์โมเดิร์น</p>
+                    <div class="mt-auto">
+                        <button onclick="event.stopPropagation(); window.location.href='PongGame.html'" class="btn-glow w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold shadow-lg hover:shadow-blue-500/30 font-kanit tracking-wide flex items-center justify-center gap-2">
+                            <i class="fas fa-play text-xs"></i> Start Game
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item 3: Space Explorer -->
+            <div class="game-card rounded-2xl overflow-hidden flex flex-col h-full group cursor-pointer" onclick="openModal('Space Explorer', 'ผจญภัยในอวกาศ', 'สำรวจจักรวาลอันกว้างใหญ่ ค้นพบดาวเคราะห์ดวงใหม่ และสร้างอาณานิคมในอวกาศ เกมที่จะพาคุณไปไกลกว่าโลกใบเดิม', 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80', '#')">
+                <div class="game-img-container h-48 bg-slate-200 relative">
+                    <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80" alt="Space Game" class="game-img w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
+                    <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="fas fa-lock text-white text-3xl"></i>
+                    </div>
+                </div>
+                <div class="p-5 flex flex-col flex-1">
+                    <h3 class="text-xl font-bold text-slate-800 font-kanit mb-1">Space Explorer</h3>
+                    <p class="text-slate-500 text-sm mb-4 font-kanit">ผจญภัยในอวกาศ</p>
+                    <div class="mt-auto">
+                        <button class="btn-glow w-full py-2.5 rounded-xl bg-slate-200 text-slate-400 font-bold font-kanit cursor-not-allowed flex items-center justify-center gap-2">
+                            <i class="fas fa-lock text-xs"></i> Locked
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item 4: City Builder -->
+            <div class="game-card rounded-2xl overflow-hidden flex flex-col h-full group cursor-pointer" onclick="openModal('City Builder', 'สร้างเมืองในฝัน', 'ออกแบบและบริหารจัดการเมืองของคุณเอง วางผังเมือง สร้างสาธารณูปโภค และดูแลความสุขของประชากร', 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&w=800&q=80', '#')">
+                <div class="game-img-container h-48 bg-slate-200 relative">
+                    <img src="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&w=800&q=80" alt="City Game" class="game-img w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
+                </div>
+                <div class="p-5 flex flex-col flex-1">
+                    <h3 class="text-xl font-bold text-slate-800 font-kanit mb-1">City Builder</h3>
+                    <p class="text-slate-500 text-sm mb-4 font-kanit">สร้างเมืองในฝัน</p>
+                    <div class="mt-auto">
+                        <button class="btn-glow w-full py-2.5 rounded-xl bg-slate-200 text-slate-400 font-bold font-kanit cursor-not-allowed flex items-center justify-center gap-2">
+                            <i class="fas fa-lock text-xs"></i> Locked
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item 5: Racing Pro -->
+            <div class="game-card rounded-2xl overflow-hidden flex flex-col h-full group cursor-pointer" onclick="openModal('Racing Pro', 'ประลองความเร็ว', 'สัมผัสความเร็วแรงทะลุจอ กับสนามแข่งระดับโลก ปรับแต่งรถคู่ใจแล้วไปซิ่งให้หลุดโลก', 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=800&q=80', '#')">
+                <div class="game-img-container h-48 bg-slate-200 relative">
+                    <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=800&q=80" alt="Racing Game" class="game-img w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
+                </div>
+                <div class="p-5 flex flex-col flex-1">
+                    <h3 class="text-xl font-bold text-slate-800 font-kanit mb-1">Racing Pro</h3>
+                    <p class="text-slate-500 text-sm mb-4 font-kanit">ประลองความเร็ว</p>
+                    <div class="mt-auto">
+                        <button class="btn-glow w-full py-2.5 rounded-xl bg-slate-200 text-slate-400 font-bold font-kanit cursor-not-allowed flex items-center justify-center gap-2">
+                            <i class="fas fa-lock text-xs"></i> Locked
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+
+
+        </div>
+    </main>
+
+    <!-- GLASS MODAL (Hidden by default) -->
+    <div id="game-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 opacity-0 modal-backdrop" onclick="closeModal()"></div>
+        
+        <!-- Content -->
+        <div class="glass-modal relative w-full max-w-2xl m-4 p-0 rounded-3xl overflow-hidden shadow-2xl transform scale-90 opacity-0 transition-all duration-300 modal-content">
+            <!-- Close Button -->
+            <button onclick="closeModal()" class="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white/30 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all duration-300 backdrop-blur-md border border-white/40 shadow-lg">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <div class="flex flex-col md:flex-row h-full">
+                <!-- Image Side -->
+                <div class="w-full md:w-2/5 h-48 md:h-auto relative">
+                    <img id="modal-img" src="" class="w-full h-full object-cover absolute inset-0">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent md:hidden"></div>
+                </div>
+                
+                <!-- Info Side -->
+                <div class="w-full md:w-3/5 p-8 flex flex-col">
+                    <div class="mb-4">
+                        <span id="modal-subtitle" class="text-indigo-600 font-bold text-sm tracking-wider uppercase mb-1 block">Game Detail</span>
+                        <h2 id="modal-title" class="text-3xl font-bold font-kanit text-slate-900 leading-tight">Title</h2>
+                    </div>
+                    
+                    <div class="flex gap-2 mb-6">
+                        <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full font-bold">Adventure</span>
+                        <span class="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-bold">RPG</span>
+                        <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full font-bold">Fps</span>
+                    </div>
+                    
+                    <p id="modal-desc" class="text-slate-600 font-kanit mb-8 leading-relaxed flex-1 text-sm md:text-base">
+                        Description goes here...
+                    </p>
+                    
+                    <div class="mt-auto">
+                        <button id="modal-play-btn" onclick="" class="btn-glow w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-lg hover:shadow-indigo-500/40 font-kanit tracking-wide flex items-center justify-center gap-2 transform transition-transform active:scale-95">
+                            <i class="fas fa-play"></i> Play Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // --- GSAP Animations ---
+        gsap.from(".sidebar", { x: -80, duration: 1, ease: "power3.out" });
+        gsap.to(".gsap-header", { y: 0, opacity: 1, duration: 1, delay: 0.3, ease: "power3.out" });
+        
+        gsap.to(".game-card", {
+            y: 0,
+            opacity: 1,
+            duration: 0.8,
+            stagger: 0.1,
+            delay: 0.5,
+            ease: "back.out(1.2)"
+        });
+
+        // --- Click Ripple Effect ---
+        document.addEventListener('click', function(e) {
+            const ripple = document.createElement('div');
+            ripple.classList.add('click-ripple');
+            ripple.style.left = e.clientX + 'px';
+            ripple.style.top = e.clientY + 'px';
+            document.body.appendChild(ripple);
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        });
+
+        // --- Modal Logic ---
+        const modal = document.getElementById('game-modal');
+        const modalBackdrop = modal.querySelector('.modal-backdrop');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        const modalTitle = document.getElementById('modal-title');
+        const modalSubtitle = document.getElementById('modal-subtitle');
+        const modalDesc = document.getElementById('modal-desc');
+        const modalImg = document.getElementById('modal-img');
+        const modalBtn = document.getElementById('modal-play-btn');
+
+        function openModal(title, subtitle, desc, imgSrc, link) {
+            modalTitle.innerText = title;
+            modalSubtitle.innerText = subtitle;
+            modalDesc.innerText = desc;
+            modalImg.src = imgSrc;
+            modalImg.onerror = function() {
+                this.src = 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80';
+            };
+
+            const tagContainer = modal.querySelector('.flex.gap-2.mb-6');
+    if (title.includes('BACKLISTED')) {
+        tagContainer.innerHTML = `
+            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full font-bold">Adventure</span>
+            <span class="px-3 py-1 bg-red-100 text-red-700 text-xs rounded-full font-bold">Action</span>
+            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full font-bold">Fps</span>
+
+        `;
+    } else {
+        // คืนค่าเดิมสำหรับเกมอื่นๆ
+        tagContainer.innerHTML = `
+            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full font-bold">Adventure</span>
+            <span class="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-bold">RPG</span>
+        `;
+    }
+
+            // Set play button action
+            if (link && link !== '#') {
+                modalBtn.onclick = function() { window.location.href = link; };
+                modalBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                modalBtn.innerHTML = '<i class="fas fa-play"></i> Play Now';
+            } else {
+                modalBtn.onclick = null;
+                modalBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                modalBtn.innerHTML = '<i class="fas fa-lock"></i> Locked';
+            }
+
+            modal.classList.remove('hidden');
+            
+            requestAnimationFrame(() => {
+                modalBackdrop.style.opacity = '1';
+                modalContent.style.opacity = '1';
+                modalContent.style.transform = 'scale(1)';
+            });
+        }
+
+        function closeModal() {
+            modalBackdrop.style.opacity = '0';
+            modalContent.style.opacity = '0';
+            modalContent.style.transform = 'scale(0.9)';
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+    </script>
+</body>
+</html>

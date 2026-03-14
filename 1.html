@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy New Year 2026</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: JetBrains Mono for the coding aesthetic -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@700;900&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050505;
+            color: white;
+            overflow: hidden;
+            font-family: 'Outfit', sans-serif;
+            perspective: 1000px; /* เพิ่ม perspective สำหรับ 3D */
+        }
+
+        /* Canvas for Fireworks */
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Content Layer */
+        .content-layer {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Liquid Glass Style - Clearer */
+        .liquid-glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            position: relative;
+        }
+
+        /* Countdown Styles */
+        .countdown-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 1rem;
+        }
+        .countdown-number {
+            font-size: 4rem;
+            line-height: 1;
+            font-weight: 900;
+            background: linear-gradient(to bottom, #fff, #999);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .countdown-label {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+
+        /* 3D Flip Animation Class */
+        .flip-exit {
+            transform-origin: center center;
+            transform: rotateX(90deg);
+            opacity: 0;
+            transition: transform 0.8s ease-in, opacity 0.6s ease-in;
+        }
+
+        /* Typewriter Styles */
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .cursor::after {
+            content: '|';
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Fade Utils */
+        .fade-enter {
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+        .fade-enter-active {
+            opacity: 1;
+        }
+        .fade-exit {
+            opacity: 1;
+            transition: opacity 1s ease-in-out;
+        }
+        .fade-exit-active {
+            opacity: 0;
+        }
+        
+        /* Decorative Images Styling */
+        .deco-img {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.5);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 1s ease-in;
+        }
+        
+        .deco-img.show {
+            opacity: 0.9;
+        }
+
+        /* Enhanced HNY Text Styles */
+        .hny-gradient {
+            font-family: 'Playfair Display', serif; 
+            font-style: italic;
+            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            background-size: 200% auto;
+            animation: shine 3s linear infinite, float 4s ease-in-out infinite;
+            text-shadow: 0 0 20px rgba(251, 245, 183, 0.3);
+            line-height: 1.1; 
+        }
+
+        @keyframes shine {
+            to {
+                background-position: 200% center;
+            }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 640px) {
+            .countdown-number { font-size: 2.5rem; }
+            .countdown-item { margin: 0 0.5rem; }
+            #hny-text { font-size: 3.5rem !important; }
+            .deco-img { width: 80px; height: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="content-layer">
+        
+        <!-- PHASE 1: Countdown -->
+        <!-- Added transition utility for the flip effect -->
+        <div id="countdown-container" class="flex flex-wrap justify-center items-center gap-4 transition-all duration-700">
+            <div class="countdown-item">
+                <span id="days" class="countdown-number">00</span>
+                <span class="countdown-label">Days</span>
+            </div>
+            <div class="countdown-item">
+                <span id="hours" class="countdown-number">00</span>
+                <span class="countdown-label">Hours</span>
+            </div>
+            <div class="countdown-item">
+                <span id="minutes" class="countdown-number">00</span>
+                <span class="countdown-label">Minutes</span>
+            </div>
+            <div class="countdown-item">
+                <span id="seconds" class="countdown-number">00</span>
+                <span class="countdown-label">Seconds</span>
+            </div>
+        </div>
+
+        <!-- PHASE 2: HNY Message (Enhanced) -->
+        <div id="hny-message" class="hidden absolute inset-0 flex items-center justify-center pointer-events-none">
+            <h1 id="hny-text" class="hny-gradient font-black text-center drop-shadow-2xl">
+                <span class="text-4xl md:text-7xl block mb-2">Happy New Year</span>
+                <span class="text-8xl md:text-[10rem] not-italic font-sans text-white/90 drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] block mt-4">2026</span>
+            </h1>
+        </div>
+
+        <!-- PHASE 3: Typewriter Poem -->
+        <div id="poem-container" class="hidden text-left max-w-2xl w-full p-8 liquid-glass code-font text-sm md:text-base leading-relaxed transform transition-all duration-1000 mt-8 mx-4 relative">
+            
+            <!-- Image 1: Top RIGHT, Rotated -->
+            <img src="pic/Profile.jpg" 
+                 class="deco-img -top-10 -right-6 md:-right-10 rotate-12" 
+                 alt="Photo 1" id="img-top-right">
+
+            <!-- Image 2: Bottom LEFT, Rotated -->
+            <img src="pic/WorkSpace.jpg" 
+                 class="deco-img -bottom-10 -left-6 md:-left-10 -rotate-12" 
+                 alt="Photo 2" id="img-bottom-left">
+
+            <div id="typewriter-content" class="text-green-400 font-medium relative z-30"></div>
+        </div>
+
+        <!-- PHASE 4: Good Luck -->
+        <div id="good-luck-container" class="hidden absolute inset-0 flex items-center justify-center">
+            <div class="liquid-glass px-12 py-8 flex gap-6 items-center justify-center">
+                <h1 id="gl-word-1" class="text-5xl md:text-7xl font-bold text-white tracking-widest uppercase glow-white opacity-0 transition-all duration-1000 transform translate-y-4">
+                    Good
+                </h1>
+                <h1 id="gl-word-2" class="text-5xl md:text-7xl font-bold text-white tracking-widest uppercase glow-white opacity-0 transition-all duration-1000 transform translate-y-4">
+                    Luck
+                </h1>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // --- CONFIGURATION ---
+    // ตั้งค่าให้นับถอยหลัง 10 วินาทีจากเวลาที่เปิดหน้าเว็บ
+    const targetDate = new Date().getTime() + 10000;
+    
+    // Poem Content
+    const poemLines = [
+        { text: '"Hello World"', delay: 1200, color: "text-blue-300" },
+        { text: '"New Year 2026: I\'ll attempt love.stop()', delay: 100, color: "text-purple-300" },
+        { text: 'but the scheduler keeps rescheduling your name every midnight', delay: 80, color: "text-gray-200" },
+        { text: 'Perhaps your heart already has a master branch with someone else -', delay: 80, color: "text-yellow-200" },
+        { text: 'and I\'m just a fork that never got merge"', delay: 100, color: "text-red-300" }
+    ];
+
+    // --- FIREWORKS ENGINE ---
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let fireworks = [];
+    let particles = [];
+    let fireworksActive = false;
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class Firework {
+        constructor(sx, sy, tx, ty) {
+            this.x = sx;
+            this.y = sy;
+            this.sx = sx;
+            this.sy = sy;
+            this.tx = tx;
+            this.ty = ty;
+            this.distanceToTarget = calculateDistance(sx, sy, tx, ty);
+            this.distanceTraveled = 0;
+            this.coordinates = [];
+            this.coordinateCount = 3;
+            while (this.coordinateCount--) {
+                this.coordinates.push([this.x, this.y]);
+            }
+            this.angle = Math.atan2(ty - sy, tx - sx);
+            this.speed = 2;
+            this.acceleration = 1.05;
+            this.brightness = random(50, 70);
+            this.targetRadius = 1;
+        }
+
+        update(index) {
+            this.coordinates.pop();
+            this.coordinates.unshift([this.x, this.y]);
+            this.speed *= this.acceleration;
+            const vx = Math.cos(this.angle) * this.speed;
+            const vy = Math.sin(this.angle) * this.speed;
+            this.distanceTraveled = calculateDistance(this.sx, this.sy, this.x + vx, this.y + vy);
+
+            if (this.distanceTraveled >= this.distanceToTarget) {
+                createParticles(this.tx, this.ty);
+                fireworks.splice(index, 1);
+            } else {
+                this.x += vx;
+                this.y += vy;
+            }
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.moveTo(this.coordinates[this.coordinates.length - 1][0], this.coordinates[this.coordinates.length - 1][1]);
+            ctx.lineTo(this.x, this.y);
+            ctx.strokeStyle = 'hsl(' + hue + ', 100%, ' + this.brightness + '%)';
+            ctx.stroke();
+        }
+    }
+
+    class Particle {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.coordinates = [];
+            this.coordinateCount = 5;
+            while (this.coordinateCount--) {
+                this.coordinates.push([this.x, this.y]);
+            }
+            this.angle = random(0, Math.PI * 2);
+            this.speed = random(1, 10);
+            this.friction = 0.95;
+            this.gravity = 1;
+            this.hue = random(hue - 50, hue + 50);
+            this.brightness = random(50, 80);
+            this.alpha = 1;
+            this.decay = random(0.015, 0.03);
+        }
+
+        update(index) {
+            this.coordinates.pop();
+            this.coordinates.unshift([this.x, this.y]);
+            this.speed *= this.friction;
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed + this.gravity;
+            this.alpha -= this.decay;
+
+            if (this.alpha <= this.decay) {
+                particles.splice(index, 1);
+            }
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.moveTo(this.coordinates[this.coordinates.length - 1][0], this.coordinates[this.coordinates.length - 1][1]);
+            ctx.lineTo(this.x, this.y);
+            ctx.strokeStyle = 'hsla(' + this.hue + ', 100%, ' + this.brightness + '%, ' + this.alpha + ')';
+            ctx.stroke();
+        }
+    }
+
+    let hue = 120;
+    let limiterTotal = 5;
+    let limiterTick = 0;
+    let timerTotal = 80;
+    let timerTick = 0;
+
+    function random(min, max) { return Math.random() * (max - min) + min; }
+    function calculateDistance(p1x, p1y, p2x, p2y) {
+        return Math.sqrt(Math.pow(p2x - p1x, 2) + Math.pow(p2y - p1y, 2));
+    }
+    function createParticles(x, y) {
+        let particleCount = 30;
+        while (particleCount--) {
+            particles.push(new Particle(x, y));
+        }
+    }
+
+    function loopFireworks() {
+        if (!fireworksActive && fireworks.length === 0 && particles.length === 0) return;
+
+        requestAnimationFrame(loopFireworks);
+        hue += 0.5;
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = 'lighter';
+
+        let i = fireworks.length;
+        while (i--) {
+            fireworks[i].draw();
+            fireworks[i].update(i);
+        }
+
+        let j = particles.length;
+        while (j--) {
+            particles[j].draw();
+            particles[j].update(j);
+        }
+
+        if (fireworksActive) {
+            if (timerTick >= timerTotal) {
+                fireworks.push(new Firework(canvas.width / 2, canvas.height, random(0, canvas.width), random(0, canvas.height / 2)));
+                timerTick = 0;
+            } else {
+                timerTick++;
+            }
+            // Auto launch random fireworks
+            if (limiterTick >= limiterTotal) {
+                fireworks.push(new Firework(canvas.width / 2, canvas.height, random(0, canvas.width), random(0, canvas.height / 2)));
+                limiterTick = 0;
+            } else {
+                limiterTick++;
+            }
+        }
+    }
+
+    // --- SEQUENCER ---
+
+    // 1. Countdown Logic
+    const daysEl = document.getElementById('days');
+    const hoursEl = document.getElementById('hours');
+    const minutesEl = document.getElementById('minutes');
+    const secondsEl = document.getElementById('seconds');
+    const countdownContainer = document.getElementById('countdown-container');
+
+    function updateCountdown() {
+        const now = new Date().getTime();
+        const distance = targetDate - now;
+
+        if (distance <= 0) {
+            // TIME IS UP!
+            clearInterval(countdownInterval);
+            if(daysEl) daysEl.innerText = "00";
+            if(hoursEl) hoursEl.innerText = "00";
+            if(minutesEl) minutesEl.innerText = "00";
+            if(secondsEl) secondsEl.innerText = "00";
+            startCelebration();
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        if(daysEl) daysEl.innerText = days < 10 ? "0" + days : days;
+        if(hoursEl) hoursEl.innerText = hours < 10 ? "0" + hours : hours;
+        if(minutesEl) minutesEl.innerText = minutes < 10 ? "0" + minutes : minutes;
+        if(secondsEl) secondsEl.innerText = seconds < 10 ? "0" + seconds : seconds;
+    }
+
+    const countdownInterval = setInterval(updateCountdown, 1000);
+    // Initial call
+    updateCountdown();
+
+
+    // 2. Celebration (Fireworks + HNY Text)
+    function startCelebration() {
+        // FLIP ANIMATION: Apply flip-exit class
+        countdownContainer.classList.add('flip-exit');
+
+        // Start Fireworks
+        fireworksActive = true;
+        loopFireworks();
+
+        // Wait for flip animation (800ms) then switch contents
+        setTimeout(() => {
+            countdownContainer.classList.add('hidden');
+            
+            // Show HNY Message
+            const hnyContainer = document.getElementById('hny-message');
+            hnyContainer.classList.remove('hidden');
+            hnyContainer.classList.add('fade-enter');
+            
+            // Force Reflow
+            void hnyContainer.offsetWidth; 
+            hnyContainer.classList.add('fade-enter-active');
+    
+            // After 6 seconds, fade out HNY and Start Poem
+            setTimeout(() => {
+                hnyContainer.classList.remove('fade-enter-active');
+                hnyContainer.classList.add('fade-exit-active');
+                
+                setTimeout(() => {
+                    hnyContainer.classList.add('hidden');
+                    startPoemSequence();
+                }, 1000); 
+            }, 6000);
+
+        }, 800); // 800ms matches the CSS transition time
+    }
+
+    // 3. Typewriter Logic
+    async function startPoemSequence() {
+        const poemContainer = document.getElementById('poem-container');
+        const contentDiv = document.getElementById('typewriter-content');
+        
+        poemContainer.classList.remove('hidden');
+        poemContainer.classList.add('fade-enter');
+        setTimeout(() => poemContainer.classList.add('fade-enter-active'), 50);
+
+        // Show Images smoothly (Updated IDs for new positions)
+        setTimeout(() => {
+            const imgTop = document.getElementById('img-top-right');
+            const imgBottom = document.getElementById('img-bottom-left');
+            if(imgTop) imgTop.classList.add('show');
+            if(imgBottom) imgBottom.classList.add('show');
+        }, 500);
+
+        for (let i = 0; i < poemLines.length; i++) {
+            const lineData = poemLines[i];
+            const lineEl = document.createElement('div');
+            lineEl.className = `mb-3 ${lineData.color} tracking-wide`; 
+            contentDiv.appendChild(lineEl);
+            
+            // Type the line (Speed INCREASED to 80ms)
+            await typeLine(lineEl, lineData.text, 80); 
+            
+            // Wait specific delay before next line
+            await new Promise(r => setTimeout(r, lineData.delay));
+        }
+
+        // After typing finishes, wait, then fade out poem
+        setTimeout(() => {
+            poemContainer.classList.remove('fade-enter-active');
+            poemContainer.classList.add('fade-exit-active');
+            
+            setTimeout(() => {
+                poemContainer.classList.add('hidden');
+                showFinalMessage();
+            }, 1000); 
+        }, 8000); 
+    }
+
+    function typeLine(element, text, speed) {
+        return new Promise(resolve => {
+            let i = 0;
+            element.classList.add('cursor');
+            
+            function type() {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                } else {
+                    element.classList.remove('cursor');
+                    resolve();
+                }
+            }
+            type();
+        });
+    }
+
+    // 4. Final Message
+    function showFinalMessage() {
+        const glContainer = document.getElementById('good-luck-container');
+        const w1 = document.getElementById('gl-word-1');
+        const w2 = document.getElementById('gl-word-2');
+
+        glContainer.classList.remove('hidden');
+        glContainer.classList.add('fade-enter');
+        setTimeout(() => glContainer.classList.add('fade-enter-active'), 50);
+
+        // Word 1 "Good" appears
+        setTimeout(() => {
+            w1.classList.remove('opacity-0', 'translate-y-4');
+        }, 500);
+
+        // Word 2 "Luck" appears after
+        setTimeout(() => {
+            w2.classList.remove('opacity-0', 'translate-y-4');
+        }, 1500);
+    }
+
+</script>
+</body>
+</html>

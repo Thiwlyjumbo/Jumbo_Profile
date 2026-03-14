@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tet Magic - Final Gold 2026</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000000; font-family: 'Segoe UI', sans-serif; }
+        canvas#three-canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
+        canvas#firework-canvas { display: block; position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
+        
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #ffd700; font-size: 20px; letter-spacing: 5px; font-weight: bold;
+            text-shadow: 0 0 25px #ff8c00; pointer-events: none; z-index: 300;
+            background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;
+        }
+
+        #cam-preview {
+            position: absolute; bottom: 20px; left: 20px; 
+            width: 160px; height: 120px;
+            border: 3px solid #ffd700; 
+            border-radius: 10px; background: #000; z-index: 150;
+            transform: scaleX(-1); overflow: hidden;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            opacity: 0.9;
+        }
+        video { width: 100%; height: 100%; object-fit: cover; }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="loading">ĐANG TẢI... VUI LÒNG CHO PHÉP CAMERA</div>
+    <div id="cam-preview"><video class="input_video"></video></div>
+
+    <canvas id="firework-canvas"></canvas>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+        import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+        import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+
+        // ==========================================
+        // CẤU HÌNH ẢNH .PNG
+        // ==========================================
+        const IMAGE_CONFIG = {
+            folder: './images/', 
+            files: ['1.png', '2.png', '3.png', '4.png', '5.png'] 
+        };
+
+        // --- GLOBAL VARIABLES ---
+        let currentPhase = 1; 
+        let canSwitchToIngot = false;
+        let isPaused = false; 
+        let userTextures = []; 
+        let scene, camera, renderer, composer, controls, bloomPass;
+        const clock = new THREE.Clock();
+        let phase2StartTime = 0;
+        
+        let headerTextMesh, headerTextMat; 
+
+        // --- CONFIG PHASE 1 ---
+        let targetRotY = 0, currentRotY = 0;
+        const MAX_ANGLE = 80 * (Math.PI / 180);
+        const CAM_DIST_P1 = 250;
+        const P1_CONFIG = { bgCount: 900, textParticleCount: 80000, textParticleSize: 0.35, textSize: 32, numberSize: 85, depthThickness: 8, textColorStart: '#ff9900', textColorEnd: '#ffffaa', explosionPower: 180.0, gatherSpeed: 0.05, areaWidth: 300, areaHeight: 200, fallSpeedMin: 4 };
+        const P1_MATS = { gold: new THREE.MeshPhysicalMaterial({ color: 0xffd966, metalness: 0.9, roughness: 0.2, emissive: 0xffaa00, emissiveIntensity: 0.8 }), paperRed: new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.6, emissive: 0xaa0000, emissiveIntensity: 0.2 }), flower: new THREE.MeshStandardMaterial({ color: 0xffff00, roughness: 0.3, emissive: 0xffff00, emissiveIntensity: 1.2 }), center: new THREE.MeshStandardMaterial({ color: 0xff0000 }) };
+        let bgParticles = [], textParticleSystem, textGeometry, font;
+        const currentPositions = new Float32Array(P1_CONFIG.textParticleCount * 3);
+        const targetPositions = new Float32Array(P1_CONFIG.textParticleCount * 3);
+        let fwCanvas, fwCtx, fwWidth, fwHeight, fwParticles = [], fwFireworks = [], isFireworkActive = false;
+
+        // --- CONFIG PHASE 2 (INGOT) ---
+        const INGOT_CONFIG = {
+            particles: { count: 1800, dustCount: 800 },
+            camera: { z: 85, y: 10 },
+            size: { scaleX: 55, scaleY: 25, scaleZ: 28 }
+        };
+        const INGOT_MATS = {
+            gold: new THREE.MeshPhysicalMaterial({ color: 0xffd700, metalness: 1.0, roughness: 0.2, emissive: 0xffaa00, emissiveIntensity: 0.3, clearcoat: 1.0 }),
+            velvetRed: new THREE.MeshStandardMaterial({ color: 0x8b0000, roughness: 0.9, emissive: 0x200000 }),
+            paperRed: new THREE.MeshStandardMaterial({ color: 0xd60000, roughness: 0.6 }),
+            dust: new THREE.MeshBasicMaterial({ color: 0xfffee0, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending }),
+            flower: new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 0.6 }),
+            center: new THREE.MeshStandardMaterial({ color: 0xff0000 }),
+            photo: new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.6, metalness: 0.1, transparent: true })
+        };
+        const INGOT_STATE = { mode: 'INGOT', focusTarget: null, hand: { detected: false, x: 0, y: 0 }, rotation: { x: 0, y: 0 } };
+        let mainGroup, photoMeshGroup, particleSystem = [];
+        let firecrackerMesh, coinMesh, ochnaGroup; 
+
+        // ==========================================
+        // 1. AI HAND TRACKING
+        // ==========================================
+        const videoElement = document.getElementsByClassName('input_video')[0];
+
+        function onResults(results) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                const wrist = landmarks[0];
+                const thumb = landmarks[4], index = landmarks[8];
+                const size = Math.hypot(landmarks[9].x - wrist.x, landmarks[9].y - wrist.y);
+                const pinch = Math.hypot(thumb.x - index.x, thumb.y - index.y) / size;
+                let tipsDist = 0; [8,12,16,20].forEach(i => tipsDist += Math.hypot(landmarks[i].x - wrist.x, landmarks[i].y - wrist.y));
+                const spread = (tipsDist / 4) / size;
+
+                // PHASE 1
+                if (currentPhase === 1) {
+                    let avgDist = 0; [8,12,16,20].forEach(i => avgDist += Math.hypot(landmarks[i].x - wrist.x, landmarks[i].y - wrist.y));
+                    avgDist /= 4;
+                    if (avgDist > 0.25) { 
+                        if (canSwitchToIngot) initPhase2();
+                        else { isPaused = true; const handX = 1 - landmarks[9].x; targetRotY = (handX - 0.5) * 2 * MAX_ANGLE; }
+                    } else { isPaused = false; targetRotY = 0; }
+                } 
+                // PHASE 2
+                else {
+                    if (Date.now() - phase2StartTime < 2000) return;
+
+                    INGOT_STATE.hand.detected = true;
+                    INGOT_STATE.hand.x = (landmarks[9].x - 0.5) * 2; 
+                    INGOT_STATE.hand.y = (landmarks[9].y - 0.5) * 2;
+
+                    if (spread < 1.3) INGOT_STATE.mode = 'INGOT';
+                    
+                    if (pinch < 0.35) { 
+                        if (INGOT_STATE.mode !== 'FOCUS') {
+                            INGOT_STATE.mode = 'FOCUS';
+                            const photos = particleSystem.filter(p => p.type === 'PHOTO');
+                            if (photos.length) INGOT_STATE.focusTarget = photos[Math.floor(Math.random()*photos.length)].mesh;
+                        }
+                    } else if (spread > 1.6) {
+                        INGOT_STATE.mode = 'SCATTER';
+                    }
+                }
+            } else {
+                isPaused = false; targetRotY = 0;
+                if (currentPhase === 2) INGOT_STATE.hand.detected = false;
+            }
+        }
+
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+        hands.setOptions({maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5});
+        hands.onResults(onResults);
+
+        window.onload = function() {
+            preloadImages();
+            const cameraUtils = new Camera(videoElement, { onFrame: async () => { await hands.send({image: videoElement}); }, width: 160, height: 120 });
+            cameraUtils.start(); init();
+        }
+
+        function preloadImages() {
+            console.log("Đang tải ảnh...");
+            IMAGE_CONFIG.files.forEach(filename => {
+                const img = new Image(); img.src = IMAGE_CONFIG.folder + filename; img.crossOrigin = "Anonymous"; 
+                img.onload = () => { const texture = cropImageToSquare(img); texture.colorSpace = THREE.SRGBColorSpace; userTextures.push(texture); console.log(`Đã tải: ${filename}`); };
+                img.onerror = () => { console.warn(`Không tìm thấy: ${filename}.`); };
+            });
+        }
+
+        // ==========================================
+        // 2. MAIN INIT
+        // ==========================================
+        function init() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.003);
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 0, CAM_DIST_P1); 
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance", alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.domElement.id = 'three-canvas';
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            document.body.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; controls.enableRotate = false;
+
+            const ambient = new THREE.AmbientLight(0xffffff, 2.0); scene.add(ambient);
+            const spot1 = new THREE.SpotLight(0xffdd55, 5000); spot1.position.set(50, 100, 50); scene.add(spot1);
+            
+            createBgMatrix(); createTextParticleSystem(); initFireworkCanvas();
+
+            const renderScene = new RenderPass(scene, camera);
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0.1; bloomPass.strength = 1.8; bloomPass.radius = 0.6;
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene); composer.addPass(bloomPass);
+
+            const loader = new FontLoader();
+            loader.load('https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', (loadedFont) => {
+                font = loadedFont; document.getElementById('loading').style.display = 'none';
+                calculateTextTargets("5"); animate(); runCountdownScript();
+            });
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // --- PHASE 1 LOGIC ---
+        async function smartWait(ms) { let r = ms; while (r > 0) { await new Promise(res => setTimeout(res, 50)); if (!isPaused) r -= 50; } }
+        
+        async function runCountdownScript() {
+            const seq = ['5', '4', '3', '2', '1']; 
+            for (let n of seq) { 
+                changeText(n); 
+                // Đã sửa: Tăng thời gian chờ lên 2500 (2.5 giây) để nhảy số chậm hơn
+                await smartWait(2500); 
+            }
+            await smartWait(200); 
+            changeText("HAPPY\nNEW YEAR"); 
+            // Đã sửa: Tăng thời gian hiện chữ Happy New Year lên 3 giây
+            await smartWait(3000); 
+            
+            isFireworkActive = true; 
+            setTimeout(() => fwFireworks.push(new Firework(fwWidth*0.2, fwHeight, fwWidth*0.2, fwHeight*0.3)), 0);
+            setTimeout(() => fwFireworks.push(new Firework(fwWidth*0.8, fwHeight, fwWidth*0.8, fwHeight*0.3)), 1000);
+            
+            await smartWait(2000); 
+            changeText("Na Yeu"); 
+            canSwitchToIngot = true;
+            console.log("Sẵn sàng chuyển Thỏi Vàng");
+        }
+
+        // ==========================================
+        // 3. PHASE 2: GOLD INGOT
+        // ==========================================
+        function initPhase2() {
+            currentPhase = 2; canSwitchToIngot = false;
+            phase2StartTime = Date.now(); 
+
+            // Clear Phase 1
+            scene.remove(textParticleSystem); bgParticles.forEach(p => scene.remove(p.mesh));
+            isFireworkActive = false; fwCtx.clearRect(0, 0, fwWidth, fwHeight);
+            document.getElementById('firework-canvas').style.display = 'none';
+
+            // Setup Phase 2
+            const pmrem = new THREE.PMREMGenerator(renderer);
+            scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+            scene.environmentIntensity = 1.0; 
+
+            camera.position.set(0, INGOT_CONFIG.camera.y, INGOT_CONFIG.camera.z); 
+            controls.enableRotate = true; 
+            
+            prepareIngotGeometries();
+            mainGroup = new THREE.Group(); scene.add(mainGroup);
+            photoMeshGroup = new THREE.Group(); mainGroup.add(photoMeshGroup);
+            createIngotParticles(); createDust();
+            
+            createHeaderText();
+
+            if(userTextures.length > 0) {
+                userTextures.forEach(t => addPhotoToScene(t));
+            }
+        }
+
+        function createHeaderText() {
+            headerTextMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffd700, metalness: 0.8, roughness: 0.2, emissive: 0xffaa00, emissiveIntensity: 0.5, side: THREE.DoubleSide, transparent: true, opacity: 1.0
+            });
+            const headerGeo = new TextGeometry("HAPPY NEW YEAR 2026", {
+                font: font, size: 5, height: 0.8, curveSegments: 12, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.05, bevelSegments: 5
+            });
+            headerGeo.computeBoundingBox();
+            const centerOffset = -0.5 * (headerGeo.boundingBox.max.x - headerGeo.boundingBox.min.x);
+            headerGeo.translate(centerOffset, 0, 0);
+
+            headerTextMesh = new THREE.Mesh(headerGeo, headerTextMat);
+            // ĐƯA LÊN CAO SÁT MÉP TRÊN MÀN HÌNH (Y=45)
+            headerTextMesh.position.set(0, 45, 0);
+            scene.add(headerTextMesh);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+            const time = Date.now() * 0.001;
+
+            if (currentPhase === 1) {
+                controls.update();
+                currentRotY += (targetRotY - currentRotY) * 0.05;
+                camera.position.x = CAM_DIST_P1 * Math.sin(currentRotY);
+                camera.position.z = CAM_DIST_P1 * Math.cos(currentRotY);
+                camera.lookAt(0, 0, 0);
+                if (textParticleSystem) { textParticleSystem.position.y = Math.sin(time * 1.5) * 4; textParticleSystem.rotation.z = Math.sin(time * 0.8) * 0.05; }
+                if (isFireworkActive) loopFireworks();
+                bgParticles.forEach(p => { p.mesh.position.y -= p.speed * 0.016; p.mesh.rotation.x += p.rotSpeed.x * 0.016; if (p.mesh.position.y < -100) p.mesh.position.y = 100; if (p.flashMat) { const s = Math.sin(time * 3 + p.sparkleOffset); p.flashMat.emissiveIntensity = s > 0.5 ? p.baseEmissive + (s * 1.5) : p.baseEmissive; } });
+                if (!isPaused) { for (let i = 0; i < P1_CONFIG.textParticleCount; i++) { const ix = i*3, iy = i*3+1, iz = i*3+2; currentPositions[ix] += (targetPositions[ix] - currentPositions[ix]) * P1_CONFIG.gatherSpeed; currentPositions[iy] += (targetPositions[iy] - currentPositions[iy]) * P1_CONFIG.gatherSpeed; currentPositions[iz] += (targetPositions[iz] - currentPositions[iz]) * P1_CONFIG.gatherSpeed; } }
+                textGeometry.attributes.position.needsUpdate = true;
+
+            } else {
+                // --- PHASE 2 ANIMATION ---
+                let targetBloom = 1.5; let targetEnv = 1.0;
+                let targetHeaderOpacity = 1.0; 
+
+                // LOGIC ẨN HIỆN CHỮ
+                if (INGOT_STATE.mode === 'FOCUS') { 
+                    // Zoom xem ảnh: ẩn chữ
+                    targetBloom = 0.2; targetEnv = 0.1;
+                    targetHeaderOpacity = 0.0;
+                } else if (INGOT_STATE.mode === 'SCATTER') {
+                    // Nổ tung (xòe tay): cũng ẩn chữ
+                    targetHeaderOpacity = 0.0;
+                } else {
+                    // Bình thường: hiện chữ
+                    targetHeaderOpacity = 1.0;
+                }
+                
+                bloomPass.strength += (targetBloom - bloomPass.strength) * 0.05;
+                scene.environmentIntensity += (targetEnv - scene.environmentIntensity) * 0.05;
+
+                if (headerTextMesh && headerTextMat) {
+                    headerTextMesh.lookAt(camera.position);
+                    headerTextMat.opacity = THREE.MathUtils.lerp(headerTextMat.opacity, targetHeaderOpacity, dt * 5);
+                    headerTextMesh.visible = headerTextMat.opacity > 0.01;
+                }
+
+                if (Date.now() - phase2StartTime < 2000) {
+                    INGOT_STATE.rotation.x = 0; INGOT_STATE.rotation.y = 0; INGOT_STATE.mode = 'INGOT';
+                } else {
+                    if (INGOT_STATE.mode === 'SCATTER' && INGOT_STATE.hand.detected) {
+                        INGOT_STATE.rotation.y += (INGOT_STATE.hand.x * 2 - INGOT_STATE.rotation.y) * 2.0 * dt;
+                        INGOT_STATE.rotation.x += (INGOT_STATE.hand.y * 0.5 - INGOT_STATE.rotation.x) * 2.0 * dt;
+                    } else {
+                        INGOT_STATE.rotation.y += 0.15 * dt;
+                        INGOT_STATE.rotation.x += (0 - INGOT_STATE.rotation.x) * 1.0 * dt;
+                    }
+                }
+                
+                mainGroup.rotation.y = INGOT_STATE.rotation.y; 
+                mainGroup.rotation.x = INGOT_STATE.rotation.x;
+
+                particleSystem.forEach(p => p.update(dt, INGOT_STATE.mode, INGOT_STATE.focusTarget));
+            }
+
+            composer.render();
+        }
+
+        // --- UTILS (GIỮ NGUYÊN) ---
+        function calculateTextTargets(inputString) { const lines = inputString.split('\n'); const lineGeometries = []; lines.forEach((lineText, index) => { const parts = lineText.trim().split(' '); const wordGeometries = []; let currentOffset = 0; parts.forEach(part => { const isNumber = /^\d+$/.test(part); const size = isNumber ? P1_CONFIG.numberSize : P1_CONFIG.textSize; const geo = new TextGeometry(part, { font: font, size: size, height: P1_CONFIG.depthThickness, curveSegments: 6, bevelEnabled: true, bevelThickness: 0.5, bevelSize: 0.3, bevelSegments: 3 }); geo.computeBoundingBox(); const width = geo.boundingBox.max.x - geo.boundingBox.min.x; geo.translate(currentOffset, 0, 0); wordGeometries.push(geo); currentOffset += width + 15; }); if (wordGeometries.length > 0) { const mergedLine = BufferGeometryUtils.mergeGeometries(wordGeometries); mergedLine.computeBoundingBox(); const lineWidth = mergedLine.boundingBox.max.x - mergedLine.boundingBox.min.x; mergedLine.translate(-lineWidth / 2, 0, 0); mergedLine.translate(0, -index * P1_CONFIG.textSize * 1.5, 0); lineGeometries.push(mergedLine); } }); if (lineGeometries.length === 0) return; const finalGeo = BufferGeometryUtils.mergeGeometries(lineGeometries); finalGeo.computeBoundingBox(); const center = new THREE.Vector3(); finalGeo.boundingBox.getCenter(center); finalGeo.translate(-center.x, -center.y, -center.z); const tempMesh = new THREE.Mesh(finalGeo, new THREE.MeshBasicMaterial()); const sampler = new MeshSurfaceSampler(tempMesh).build(); const tempPos = new THREE.Vector3(); const c1 = new THREE.Color(P1_CONFIG.textColorStart); const c2 = new THREE.Color(P1_CONFIG.textColorEnd); const colorAttribute = textGeometry.attributes.color; finalGeo.computeBoundingBox(); const heightRange = finalGeo.boundingBox.max.y - finalGeo.boundingBox.min.y || 1; const minY = finalGeo.boundingBox.min.y; for (let i = 0; i < P1_CONFIG.textParticleCount; i++) { sampler.sample(tempPos); targetPositions[i*3] = tempPos.x; targetPositions[i*3+1] = tempPos.y; targetPositions[i*3+2] = tempPos.z; const mix = (tempPos.y - minY) / heightRange; const col = c1.clone().lerp(c2, mix); colorAttribute.setXYZ(i, col.r, col.g, col.b); } colorAttribute.needsUpdate = true; lineGeometries.forEach(g => g.dispose()); }
+        function createBgMatrix() { const firecrackerGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.6, 8); const coinGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.05, 16); const ochnaGeo = new THREE.SphereGeometry(0.15, 4, 4); ochnaGeo.scale(1, 0.2, 1); for (let i = 0; i < P1_CONFIG.bgCount; i++) { const rand = Math.random(); let mesh, flashMat; if (rand < 0.2) { mesh = new THREE.Mesh(firecrackerGeo, P1_MATS.paperRed.clone()); } else if (rand < 0.6) { flashMat = P1_MATS.gold.clone(); mesh = new THREE.Mesh(coinGeo, flashMat); mesh.rotation.x = Math.PI/2; } else { mesh = new THREE.Group(); flashMat = P1_MATS.flower.clone(); for(let j=0; j<5; j++){ const p = new THREE.Mesh(ochnaGeo, flashMat); p.position.set(Math.cos((j/5)*Math.PI*2)*0.2, 0, Math.sin((j/5)*Math.PI*2)*0.2); mesh.add(p); } } const depthZ = (Math.random() * 250) - 80; mesh.position.set((Math.random()-0.5)*300, (Math.random()-0.5)*200, depthZ); const scale = 1 + (depthZ+50)/200; mesh.scale.setScalar((0.8 + Math.random()*0.6)*scale); scene.add(mesh); bgParticles.push({ mesh, flashMat, baseEmissive: flashMat ? flashMat.emissiveIntensity : 0, speed: (4 + Math.random() * 6)*scale, rotSpeed: { x: (Math.random()-0.5)*3, y: (Math.random()-0.5)*3 }, sparkleOffset: Math.random() * 100 }); } }
+        function createTextParticleSystem() { textGeometry = new THREE.BufferGeometry(); const colors = new Float32Array(P1_CONFIG.textParticleCount * 3); for (let i = 0; i < P1_CONFIG.textParticleCount; i++) { currentPositions[i*3] = (Math.random() - 0.5) * 500; currentPositions[i*3+1] = (Math.random() - 0.5) * 500; currentPositions[i*3+2] = (Math.random() - 0.5) * 500; targetPositions[i*3] = currentPositions[i*3]; targetPositions[i*3+1] = currentPositions[i*3+1]; targetPositions[i*3+2] = currentPositions[i*3+2]; } textGeometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3)); textGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3)); const material = new THREE.PointsMaterial({ size: P1_CONFIG.textParticleSize, map: getCircleTexture(), vertexColors: true, transparent: true, opacity: 1.0, depthWrite: false, blending: THREE.AdditiveBlending }); textParticleSystem = new THREE.Points(textGeometry, material); scene.add(textParticleSystem); }
+        function changeText(text) { for (let i = 0; i < P1_CONFIG.textParticleCount; i++) { const r = P1_CONFIG.explosionPower; currentPositions[i*3] += (Math.random() - 0.5) * r; currentPositions[i*3+1] += (Math.random() - 0.5) * r; currentPositions[i*3+2] += (Math.random() - 0.5) * r; } calculateTextTargets(text); }
+        function getCircleTexture() { const c = document.createElement('canvas'); c.width=64; c.height=64; const ctx = c.getContext('2d'); const grad = ctx.createRadialGradient(32,32,10, 32,32,32); grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); }
+        function initFireworkCanvas() { fwCanvas = document.getElementById('firework-canvas'); fwCtx = fwCanvas.getContext('2d'); resizeFw(); }
+        function resizeFw() { fwWidth = window.innerWidth; fwHeight = window.innerHeight; fwCanvas.width = fwWidth; fwCanvas.height = fwHeight; }
+        function random(min, max) { return Math.random() * (max - min) + min; }
+        class Firework { constructor(sx, sy, tx, ty) { this.x = sx; this.y = sy; this.sx = sx; this.sy = sy; this.tx = tx; this.ty = ty; this.distanceToTarget = Math.sqrt(Math.pow(tx - sx, 2) + Math.pow(ty - sy, 2)); this.coordinates = []; this.coordinateCount = 4; while(this.coordinateCount--) { this.coordinates.push([this.x, this.y]); } this.angle = Math.atan2(ty - sy, tx - sx); this.speed = random(6, 10); this.acceleration = 1.02; this.hue = random(0, 360); this.brightness = random(60, 80); this.targetRadius = 1; } update(index) { this.coordinates.pop(); this.coordinates.unshift([this.x, this.y]); this.speed *= this.acceleration; const vx = Math.cos(this.angle) * this.speed; const vy = Math.sin(this.angle) * this.speed; if(Math.sqrt(Math.pow(this.sx - this.x, 2) + Math.pow(this.sy - this.y, 2)) >= this.distanceToTarget) { createParticles(this.tx, this.ty, this.hue); fwFireworks.splice(index, 1); } else { this.x += vx; this.y += vy; } } draw() { fwCtx.beginPath(); fwCtx.moveTo(this.coordinates[this.coordinates.length - 1][0], this.coordinates[this.coordinates.length - 1][1]); fwCtx.lineTo(this.x, this.y); fwCtx.strokeStyle = 'hsl(' + this.hue + ', 100%, ' + this.brightness + '%)'; fwCtx.lineWidth = 2; fwCtx.stroke(); } }
+        class ParticleP1 { constructor(x, y, hue) { this.x = x; this.y = y; this.coordinates = []; this.coordinateCount = 6; while(this.coordinateCount--) { this.coordinates.push([this.x, this.y]); } this.angle = random(0, Math.PI * 2); this.speed = random(5, 18); this.friction = 0.98; this.gravity = 0.02; this.hue = random(hue - 20, hue + 20); this.brightness = random(60, 90); this.alpha = 1; this.decay = random(0.005, 0.02); } update(index) { this.coordinates.pop(); this.coordinates.unshift([this.x, this.y]); this.speed *= this.friction; this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed + this.gravity; this.alpha -= this.decay; if(this.alpha <= this.decay) fwParticles.splice(index, 1); } draw() { fwCtx.beginPath(); fwCtx.moveTo(this.coordinates[this.coordinates.length - 1][0], this.coordinates[this.coordinates.length - 1][1]); fwCtx.lineTo(this.x, this.y); fwCtx.strokeStyle = 'hsla(' + this.hue + ', 100%, ' + this.brightness + '%, ' + this.alpha + ')'; fwCtx.lineWidth = 2; fwCtx.stroke(); } }
+        function createParticles(x, y, hue) { let c = 500; while(c--) fwParticles.push(new ParticleP1(x, y, hue)); }
+        function loopFireworks() { if (!isFireworkActive) return; fwCtx.globalCompositeOperation = 'destination-out'; fwCtx.fillStyle = 'rgba(0, 0, 0, 0.15)'; fwCtx.fillRect(0, 0, fwWidth, fwHeight); fwCtx.globalCompositeOperation = 'lighter'; if(fwFireworks.length < 5 && Math.random() < 0.05) { fwFireworks.push(new Firework(fwWidth/2+(random(0, fwWidth)-fwWidth/2)*0.2, fwHeight, random(0, fwWidth), random(0, fwHeight/2))); } let i = fwFireworks.length; while(i--) { fwFireworks[i].draw(); fwFireworks[i].update(i); } let j = fwParticles.length; while(j--) { fwParticles[j].draw(); fwParticles[j].update(j); } }
+
+        // --- PHASE 2 HELPERS ---
+        function prepareIngotGeometries() {
+            const fcGroup = new THREE.Group(); 
+            const cyl = new THREE.CylinderGeometry(0.12, 0.12, 0.6, 12); const body = new THREE.Mesh(cyl, INGOT_MATS.paperRed);
+            const rim = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 16), INGOT_MATS.gold); rim.rotation.x = Math.PI/2; rim.position.y = 0.2;
+            const str = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2), new THREE.MeshStandardMaterial({color:0xdddddd})); str.position.y = 0.4; 
+            fcGroup.add(body, rim, str); firecrackerMesh = fcGroup;
+            const cShape = new THREE.Shape(); cShape.absarc(0,0,0.5,0,Math.PI*2); const hole = new THREE.Path(); hole.moveTo(-0.15,-0.15); hole.lineTo(0.15,-0.15); hole.lineTo(0.15,0.15); hole.lineTo(-0.15,0.15); cShape.holes.push(hole); 
+            coinMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(cShape,{depth:0.08, bevelEnabled:true, bevelThickness:0.03, bevelSize:0.02}), INGOT_MATS.gold);
+            ochnaGroup = new THREE.Group(); const pGeo = new THREE.SphereGeometry(0.15,8,8); pGeo.scale(1, 0.2, 1); 
+            for(let i=0; i<5; i++){ const p = new THREE.Mesh(pGeo, INGOT_MATS.flower); const a = (i/5)*Math.PI*2; p.position.set(Math.cos(a)*0.15, 0, Math.sin(a)*0.15); p.rotation.x = Math.PI/4; ochnaGroup.add(p); } 
+            ochnaGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.08), INGOT_MATS.center));
+        }
+
+        function createIngotParticles() {
+            for (let i = 0; i < INGOT_CONFIG.particles.count; i++) {
+                const rand = Math.random(); let mesh, type;
+                if (rand < 0.1) { mesh = firecrackerMesh.clone(); type = 'FIRECRACKER'; } 
+                else if (rand < 0.7) { mesh = coinMesh.clone(); type = 'COIN'; } 
+                else { mesh = ochnaGroup.clone(); type = 'OCHNA'; }
+                const s = 0.6 + Math.random() * 0.5; mesh.scale.set(s,s,s); mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
+                mainGroup.add(mesh); particleSystem.push(new Particle(mesh, type, false));
+            }
+        }
+        function createDust() { 
+            const geo = new THREE.TetrahedronGeometry(0.12, 0); 
+            for(let i=0; i<INGOT_CONFIG.particles.dustCount; i++) { 
+                const mesh = new THREE.Mesh(geo, INGOT_MATS.dust); mesh.scale.setScalar(0.3 + Math.random()); 
+                mainGroup.add(mesh); particleSystem.push(new Particle(mesh, 'DUST', true)); 
+            } 
+        }
+
+        function cropImageToSquare(image) {
+            const size = Math.min(image.width, image.height);
+            const c = document.createElement('canvas'); c.width = 512; c.height = 512; const ctx = c.getContext('2d');
+            const sx = (image.width - size) / 2; const sy = (image.height - size) / 2;
+            ctx.clearRect(0, 0, 512, 512);
+            ctx.drawImage(image, sx, sy, size, size, 0, 0, 512, 512);
+            ctx.lineWidth = 20; ctx.strokeStyle = '#ffd700'; ctx.strokeRect(0,0,512,512);
+            return new THREE.CanvasTexture(c);
+        }
+
+        function addPhotoToScene(texture) {
+            const group = new THREE.Group(); 
+            const photoGeo = new THREE.PlaneGeometry(2.5, 2.5); 
+            const photoMat = INGOT_MATS.photo.clone(); photoMat.map = texture;
+            const photo = new THREE.Mesh(photoGeo, photoMat); photo.position.z = 0.18;
+            const frameGeo = new THREE.BoxGeometry(2.8, 2.8, 0.3); const frame = new THREE.Mesh(frameGeo, INGOT_MATS.gold);
+            const backGeo = new THREE.BoxGeometry(2.6, 2.6, 0.32); const back = new THREE.Mesh(backGeo, INGOT_MATS.velvetRed);
+            group.add(frame, back, photo); photoMeshGroup.add(group);
+            group.userData = { isPhoto: true, u: 0 };
+            particleSystem.push(new Particle(group, 'PHOTO', false)); 
+            updatePhotoPositions();
+        }
+
+        function updatePhotoPositions() {
+            const photos = particleSystem.filter(p => p.type === 'PHOTO');
+            if (photos.length === 0) return;
+            const range = 1.6; 
+            const step = range / (photos.length + 1);
+            const startU = -range / 2;
+            photos.forEach((p, i) => { p.mesh.userData.u = startU + step * (i + 1); p.calculatePositions(); });
+        }
+
+        class Particle {
+            constructor(mesh, type, isDust) {
+                this.mesh = mesh; this.type = type; this.isDust = isDust;
+                this.posIngot = new THREE.Vector3(); this.posScatter = new THREE.Vector3();
+                this.baseScale = mesh.scale.x; this.spinSpeed = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).multiplyScalar(2);
+                this.calculatePositions();
+            }
+            calculatePositions() {
+                const rS = 50 + Math.random()*30;
+                const theta = Math.random() * Math.PI * 2; const phi = Math.acos(2 * Math.random() - 1);
+                this.posScatter.set(rS*Math.sin(phi)*Math.cos(theta), rS*Math.sin(phi)*Math.sin(theta), rS*Math.cos(phi));
+                let u, v, radius;
+                if (this.type === 'PHOTO') { u = this.mesh.userData.u !== undefined ? this.mesh.userData.u : 0; v = Math.PI / 2; radius = 1.15; } 
+                else { u = (Math.random() - 0.5) * 2.2; v = Math.random() * Math.PI * 2; radius = 0.65 + Math.random() * 0.35; }
+                const x = u * (INGOT_CONFIG.size.scaleX / 2);
+                const bellyFactor = Math.sqrt(Math.max(0, 1 - (u*u)/1.5)); 
+                const z = Math.cos(v) * (INGOT_CONFIG.size.scaleZ / 2) * bellyFactor * radius;
+                const curveUp = Math.pow(Math.abs(u), 2.5) * 15;
+                const bodyY = Math.sin(v) * (INGOT_CONFIG.size.scaleY / 2) * bellyFactor;
+                let centerBump = 0;
+                if (Math.abs(u) < 0.4 && Math.sin(v) > 0.5) centerBump = 8 * Math.cos(u*Math.PI*2) * (Math.sin(v)-0.5)*2;
+                const y = curveUp + bodyY + centerBump;
+                this.posIngot.set(x, y - 5, z);
+            }
+            update(dt, mode, targetMesh) {
+                let target = (mode === 'SCATTER') ? this.posScatter : this.posIngot;
+                if (mode === 'FOCUS' && this.mesh === targetMesh) { 
+                    const targetWorldPos = new THREE.Vector3(0, INGOT_CONFIG.camera.y, 45);
+                    const desiredLocalPos = targetWorldPos.applyMatrix4(mainGroup.matrixWorld.clone().invert());
+                    target = desiredLocalPos;
+                }
+                const speed = (mode === 'FOCUS' && this.mesh === targetMesh) ? 5 : 2.5; 
+                this.mesh.position.lerp(target, speed * dt);
+                if (mode === 'SCATTER') { this.mesh.rotation.x += this.spinSpeed.x * dt; this.mesh.rotation.y += this.spinSpeed.y * dt; } 
+                else if (mode === 'INGOT' && !this.isDust) {
+                    if (this.type === 'PHOTO') { this.mesh.lookAt(this.mesh.position.x, this.mesh.position.y + 100, this.mesh.position.z + 100); this.mesh.rotation.x = 0; this.mesh.rotation.z = this.mesh.position.x * -0.01; } 
+                    else { this.mesh.rotation.x += 0.5 * dt; this.mesh.rotation.y += 0.5 * dt; }
+                }
+                if (mode === 'FOCUS' && this.mesh === targetMesh) { this.mesh.lookAt(camera.position); this.mesh.scale.lerp(new THREE.Vector3(5,5,5), 4*dt); } 
+                else { let s = this.baseScale; if(this.isDust) s *= (0.8 + 0.6 * Math.sin(clock.elapsedTime * 5 + this.mesh.id)); if(this.type === 'PHOTO' && mode === 'FOCUS') s *= 0.5; this.mesh.scale.lerp(new THREE.Vector3(s,s,s), 4*dt); }
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
+            if(currentPhase===1) resizeFw();
+        }
+    </script>
+</body>
+</html>
