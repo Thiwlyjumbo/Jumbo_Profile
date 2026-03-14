@@ -294,7 +294,7 @@ def up_douw():
         print("neither")
 
 
-
+# ปีอธิกสุรทิน A1-021
 def Leap_year():
     year = int(input("Enter Year : "))
     result = "None"
@@ -316,7 +316,7 @@ def Leap_year():
     print(result)
 
 
-
+# ราศี A1-022
 def Zodiac():
     day = int(input("Enter Day :"))
     month = int(input("Enter Month : "))
@@ -353,6 +353,9 @@ def Zodiac():
 
     print(result)
     
+
+
+# ราศี A1-022 V.2
 def Zodiac_V2():
     day = int(input())
     month = int(input())
