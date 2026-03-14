@@ -378,3 +378,66 @@ def Zodiac_V2():
 
 
 
+# สถานะน้ำ A1-023
+def Water_Status():
+    temp = int(input("Enter Temperature : "))
+    Unit = input("Enter Temperature Unit : ")
+    status = "None"
+    if not Unit in ["C", "c", "F", "f"]:
+        status = "Can't calculate please enter unit as F or C "
+
+    elif Unit in ["C", "c"]:
+        if temp == 0:
+            status = "solid"
+        elif (temp > 0) and (temp < 100):
+            status = "liquid"
+        elif temp == 100:
+            status = "gas"
+
+    elif Unit in ["F", "f"]:
+        if temp == 32:
+            status = "solid"
+        elif (temp > 32) and (temp < 212):
+            status = "liquid"
+        elif temp == 212:
+            status = "gas"
+    print(status)
+
+
+
+
+# ภาษีรถยนต์ A1-024
+def Car_Tax():
+    year = int(input("AD year : "))
+    cc = int(input("cc engine size : "))
+    tax = "None"
+
+    if (year <= 1990):
+        if (cc <= 1500):
+            tax = "1250"
+        elif (cc > 1500) and (cc >= 2000):
+            tax = "1400"
+        elif (cc > 2000):
+            tax = "2000"
+    elif (year > 1990) and (year <= 1999):
+        if (cc <= 1500):
+            tax = "1100"
+        elif (cc > 1500) and (cc <= 2000):
+            tax = "1300"
+        elif (cc > 2000):
+            tax = "1700"
+    elif (year >= 2000):
+        if (cc <= 1500):
+            tax = "1000"
+        elif (cc > 1500) and (cc <= 2000):
+            tax = "1200"
+        elif (cc > 2000):
+            tax = "1500"
+    print(tax)
+
+
+
+
+# ไฟ่ 44 ใบ
+def Card():
+    Value = input
