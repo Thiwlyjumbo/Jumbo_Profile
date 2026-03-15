@@ -1,3 +1,5 @@
+import re
+
 # สวัสดี: ชื่อ A1-001
 def Hello_Name():
     name = str(input("Enter your name: "))
@@ -440,4 +442,8 @@ def Car_Tax():
 
 # ไฟ่ 44 ใบ
 def Card():
-    Value = input
+    text = "Hello123"
+    result = re.search("\d+", text)
+    print(result + "1")
+
+Card()
