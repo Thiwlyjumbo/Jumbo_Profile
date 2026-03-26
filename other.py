@@ -36,6 +36,7 @@ day17 = "\n" \
 "\n" \
 "\n"
 
+
 for char in day17:
     print(char, end='', flush=True)
     time.sleep(0.1)
