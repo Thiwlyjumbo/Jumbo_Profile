@@ -440,12 +440,20 @@ def Car_Tax():
 
 
 
-# ไฟ่ 44 ใบ
+# ไพ่ 44 ใบ A1-025
 def Card():
-    print("Hello World")
+    code = input("Enter Code : ").strip().upper()
 
+    rank_code = code[0:-1]
+    suit_code = code[-1]
 
+    rank_dict = {"A" : "ace", "J" : "jack", "Q" : "queen", "K" : "king"}
+    suit_dict = {"D" : "daimonds", "H" : "hearts", "S" : "spades", "C" : "clubs"}
 
+    rank_result = rank_dict.get(rank_code, rank_code)
+    suit_resuit = suit_dict.get(suit_code,"")
 
-
-Card()
+    if suit_code:
+        print(f"{rank_result} of {suit_resuit}")
+    else:
+        print("Errer code")

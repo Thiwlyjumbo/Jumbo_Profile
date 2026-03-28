@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquid Glass Card</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --primary-color: #ffffff;
+            --accent-color: #4facfe;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Kanit', sans-serif;
+            /* ใช้พื้นหลังเดิมของคุณ */
+            background-image: url('https://plus.unsplash.com/premium_vector-1697729804286-7dd6c1a04597?q=80&w=1070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        /* ตกแต่งพื้นหลังเพิ่มเติมให้ดูมีมิติ */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(45deg, rgba(0,0,0,0.2), rgba(0,0,0,0.1));
+            z-index: -1;
+        }
+
+        /* ตัวการ์ด Liquid Glass */
+        .card {
+            width: 320px;
+            padding: 40px 30px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px); /* เอฟเฟกต์กระจกฝ้า */
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            color: var(--primary-color);
+            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+            animation: floating 6s ease-in-out infinite;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* ส่วนของรูปภาพ */
+        .img-container {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* ข้อความในการ์ด */
+        .card h2 {
+            margin: 10px 0;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .card p {
+            font-size: 1rem;
+            font-weight: 300;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        /* ปุ่มกด */
+        .btn {
+            display: inline-block;
+            padding: 12px 35px;
+            background: #fff;
+            color: #333;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 500;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn:hover {
+            background: var(--accent-color);
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(7, 50, 1, 0.4);
+            background-color: rgba(99, 254, 79, 0.4);
+        }
+
+        /* อนิเมชั่นลอยตัว */
+        @keyframes floating {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        /* รองรับหน้าจอขนาดเล็ก */
+        @media (max-width: 480px) {
+            .card {
+                width: 80%;
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="img-container">
+            <img src="Profile.jpg" alt="Profile">
+        </div>
+        
+        <h2>📢ผมย้ายบ้านใหม่แล้ว!!!</h2>
+        
+        <p>
+            เพื่อการใช้งานที่สะดวกและรวดเร็วขึ้น <br>
+            เราได้ย้ายหน้าเว็บไซต์ไปที่ที่ดียิ่งกว่าเดิม <br>
+            ไม่ต้องหงุดหงิดไปนะ <br>
+            กดที่ปุ่มด้านล่างเพื่อเข้าสู่หน้าเว็บหลักได้ทันทีเลย!"
+        </p>
+
+        <a href="https://thiw.netlify.app/" class="btn">😛ไปกันเลย!!</a>
+    </div>
+
+</body>
+</html>
