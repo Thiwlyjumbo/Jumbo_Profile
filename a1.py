@@ -457,3 +457,78 @@ def Card():
         print(f"{rank_result} of {suit_resuit}")
     else:
         print("Errer code")
+
+
+
+
+# นับเลขคู่และเลขคี่ A1-026
+def Even_odd():
+    num = [int(input("Enter Number 1 : ")), 
+           int(input("Enter Number 2 : ")),
+             int(input("Enter Number 3 : "))]
+    even = 0
+    odd = 0
+
+    for i in num:
+        if (i % 2) == 0:
+            even += 1
+        else:
+            odd += 1
+
+    print(f"even {even}")
+    print(f"odd {odd}")
+        
+
+
+# สลับตัวอักษร A1-027
+def Swap():
+    text = input("Enter Text : ").lower()
+    print(text[::-1])
+
+
+
+# ตัวเลขกลับด้าน A1-028
+def Reversed():
+    num = input("Enter Number : ")[::-1]
+    print(int(num))
+
+
+
+# การนับสระ A1-029
+def pool():
+    text = input("Enter Text : ")
+    pool = ["a", "e", "i", "o", "u", "A","E", "I", "O", "U"]
+    pool_count = 0
+
+    for i in text:
+        if i in pool:
+            pool_count += 1
+        
+    print(pool_count)
+
+
+
+# ผลรวมของค่าที่มากกว่า A1-030
+def Greater_values():
+    n = int(input("Enter n : "))
+    data =  list(map(int, input("Enter data : ").split()))
+    num = []
+
+    for i in range(0, len(data), 2):
+        first = data[i]
+        second = data[i+1]
+
+        win = max(first, second)
+        num.append(win)
+        
+    string_num = [str(x) for x in num]
+    result_num = " + ".join(string_num)
+    
+    if (n == 1):
+        print(num[0])
+    elif (n > 1):
+        print(f"{result_num} = {sum(num)}")
+
+Greater_values()
+
+
