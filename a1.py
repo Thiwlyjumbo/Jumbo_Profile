@@ -529,6 +529,34 @@ def Greater_values():
     elif (n > 1):
         print(f"{result_num} = {sum(num)}")
 
-Greater_values()
+
+
+# ลูกน้ำ A1-031
+def comma():
+    num = int(input("Enter Number : "))
+    if (num >= 1000) and (num <= 999999):
+        print(f"{num : ,}")
+    else:
+        print("Num Errer")
+
+
+
+# * A1-032
+def Star():
+    n = int(input("Enter n : "))
+    
+    ii = "*" * (n-2)
+    iii = "*" * (n-4)
+    if (n-2) < 1:
+        ii = ""
+    elif (n-4) < 1:
+        iii = ""
+
+    print("*" * n)
+    print(ii)
+    print(iii)
+
+
+
 
 
