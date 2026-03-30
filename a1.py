@@ -558,5 +558,89 @@ def Star():
 
 
 
+# จำนวนสระ A1-033
+def pool_value():
+    n = int(input("Enter n : "))
+    pool = ["a", "e", "i", "o", "u", "A","E", "I", "O", "U"]
+    count = 0
+    
+    for i in range(n):
+        pool_input = input("Enter Text : ")
+        if pool_input in pool:
+            count += 1
+    
+    print(count)
 
+
+
+
+# ค่าน้อยที่สุด A1-034
+def min_value():
+    n = int(input("Enter n : "))
+    num = []
+
+    for i in range(n):
+        num_input = int(input("Enter Number : "))
+        num.append(num_input)
+    
+    print(min(num))
+
+
+
+
+# ผมรวมกำลังสอง A1-035
+def sum_of_squares():
+    n = int(input("Enter n : "))
+    root = 0
+    num = []
+
+    for i in range(n):
+        root += 1
+        num.append((root ** 2))
+    
+    print(sum(num))
+
+
+
+
+# หาร 10 A1-036
+def divide_10():
+    n = int(input("Enter n : "))
+    #หากแทนที่ด้วย start = (n // 10) * 10
+    num = []
+    for i in range(n, -1, -1): #แทนที่ด้วย start จะทำให้ประหยัดทรัพยากามากกว่า
+        if (i % 10) == 0:
+            num.append(i)
+    
+    print(*num)
+
+
+
+# เลขโรมัน a1-037
+def roman():
+    val = 3999
+    dict_roman = {"|" : 1, "V" : 5, "X" : 10, "L" : 50, "C" : 100, "D" : 500, "M" : 1000}
+
+    m1000 = val // 1000
+    val %= 1000
+    d500 = val // 500
+    val %= 500
+    c100 = val // 100
+    val %= 100
+    l50 = val // 50
+    val %= 50
+    x10 = val // 10
+    val %= 10
+    v5 = val // 5
+    val %= 5
+    i1 = val // 1
+    print(f"1000 = {m1000}")
+    print(f"500 = {d500}")
+    print(f"100 = {c100}")
+    print(f"50 = {l50}")
+    print(f"x10 = {x10}")
+    print(f"5 = {v5}")
+    print(f"1 = {i1}")
+
+roman()
 
