@@ -529,6 +529,9 @@ def Greater_values():
     elif (n > 1):
         print(f"{result_num} = {sum(num)}")
 
-Greater_values()
+
+
+
+
 
 
